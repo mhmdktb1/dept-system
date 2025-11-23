@@ -1,0 +1,8 @@
+{
+  "name": "chocair-fresh-debt-system",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "mongodb": "^6.21.0"
+  }
+}
