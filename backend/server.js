@@ -24,25 +24,7 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type']
-}));
-
-// CORS headers for all routes
-app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type");
-    
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-    
-    next();
-});
+app.use(cors()); // Full CORS support
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -73,8 +55,12 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-    console.log(`API endpoints available at http://localhost:${PORT}/api/*`);
-    console.log(`Health check: http://localhost:${PORT}/health`);
+    console.log('========================================');
+    console.log('✅ Server is running successfully!');
+    console.log(`📍 Port: ${PORT}`);
+    console.log(`🌐 Server URL: http://localhost:${PORT}`);
+    console.log(`🔗 Health Check: http://localhost:${PORT}/health`);
+    console.log(`📡 API Base: http://localhost:${PORT}/api`);
+    console.log('========================================');
 });
 

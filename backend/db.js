@@ -55,12 +55,7 @@ export async function getDb() {
                 }
 
                 // Create new MongoClient instance
-                const client = new MongoClient(uri, {
-                    // Connection options for better performance and reliability
-                    maxPoolSize: 10,
-                    minPoolSize: 1,
-                    serverSelectionTimeoutMS: 5000,
-                });
+                const client = new MongoClient(uri);
 
                 // Connect to MongoDB Atlas
                 await client.connect();
