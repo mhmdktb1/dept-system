@@ -1,70 +1,35 @@
 /**
- * Get All Customers API Endpoint
+ * Get All Customers Route
  * 
- * This serverless function handles GET requests to retrieve a list of all customers
+ * This route handles GET requests to retrieve a list of all customers
  * with their summary statistics including receipt count, total debt, total paid,
  * and current balance.
- * 
- * Vercel Serverless Functions:
- * - Each API route file exports a default handler function
- * - The handler receives (req, res) parameters
- * - Functions use getDb() to access cached MongoDB connections
- * - Responses are sent as JSON using res.json()
- * 
- * Frontend Usage:
- * - This endpoint is called on page load to display the customer list
- * - The data is used to render customer cards with name, receipt count, and balance
- * - Used to provide an overview of all customers and their outstanding debts
  */
 
-import { getDb } from './_db.js';
+import { getDb } from '../db.js';
+import express from 'express';
+
+const router = express.Router();
 
 /**
- * Default handler for the getCustomers endpoint
- * 
- * @param {Object} req - Request object from Vercel
- * @param {Object} res - Response object from Vercel
+ * GET /api/getCustomers
  */
-export default async function handler(req, res) {
-    // CORS Headers
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-    if (req.method === "OPTIONS") {
-        return res.status(200).end();
-    }
-
+router.get('/', async (req, res) => {
     try {
-        // Only allow GET requests
-        // GET is the appropriate HTTP method for retrieving data
-        // without modifying server state
-        if (req.method !== 'GET') {
-            return res.status(405).json({ 
-                error: 'Method not allowed' 
-            });
-        }
-
         // Get database connection
-        // getDb() returns a cached connection, which is efficient for
-        // serverless functions that may be invoked multiple times
         const db = await getDb();
 
         // Fetch all customers from database
-        // We retrieve all customers to display in the customer list
         const customers = await db.collection('customers')
             .find({})
             .toArray();
 
         // Fetch all transactions to calculate customer statistics
-        // We need transactions to compute totalDebt, totalPaid, and balance
-        // for each customer
         const allTransactions = await db.collection('transactions')
             .find({})
             .toArray();
 
         // Group transactions by customerId and calculate totals
-        // This aggregation approach is efficient and ensures accurate calculations
         const customerStats = {};
         
         allTransactions.forEach((transaction) => {
@@ -94,8 +59,6 @@ export default async function handler(req, res) {
         });
 
         // Map customers to the expected format with computed statistics
-        // We combine customer data with transaction statistics to provide
-        // a complete view of each customer's financial status
         const customersWithStats = customers.map((customer) => {
             const customerId = customer._id.toString();
             const stats = customerStats[customerId] || {
@@ -119,12 +82,10 @@ export default async function handler(req, res) {
         });
 
         // Return list of customers with their statistics
-        // This format matches what the frontend expects for rendering customer cards
         return res.status(200).json(customersWithStats);
 
     } catch (error) {
         // Handle database errors and other exceptions
-        // We log the error for debugging but return a user-friendly message
         console.error('Error fetching customers:', error);
 
         // Return generic error message to avoid exposing internal details
@@ -132,5 +93,7 @@ export default async function handler(req, res) {
             error: 'Failed to fetch customers. Please try again later.'
         });
     }
-}
+});
+
+export default router;
 

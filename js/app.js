@@ -7,7 +7,7 @@
 // CONFIGURATION
 // ====================================
 const CONFIG = {
-    BASE_URL: "https://chocair-fresh-debt-system-e2rsgk57e-mhmds-projects-fc809501.vercel.app",
+    BASE_URL: "http://localhost:3000",
     GOOGLE_CLIENT_ID: "780794685039-gbqdfps9jk1hjv88r3qc1dhp08flks52.apps.googleusercontent.com",
     GOOGLE_FOLDER_ID: "1eBdacCCyxqNb045b7tDHx6ei5DYBVbiI"
 };

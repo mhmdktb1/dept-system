@@ -1,46 +1,24 @@
 /**
- * Delete Customer API Endpoint
+ * Delete Customer Route
  * 
- * This serverless function handles POST requests to delete a customer and all
+ * This route handles POST requests to delete a customer and all
  * associated transactions from the MongoDB database.
- * 
- * Vercel Serverless Functions:
- * - Each API route file exports a default handler function
- * - The handler receives (req, res) parameters
- * - Functions use getDb() to access cached MongoDB connections
- * - Responses are sent as JSON using res.json()
- * 
- * Note: This will delete the customer and all their transactions.
- * This action cannot be undone.
  */
 
-import { getDb } from './_db.js';
+import { getDb } from '../db.js';
 import { ObjectId } from 'mongodb';
+import express from 'express';
+
+const router = express.Router();
 
 /**
- * Default handler for the deleteCustomer endpoint
+ * POST /api/deleteCustomer
  * 
- * @param {Object} req - Request object from Vercel
- * @param {Object} res - Response object from Vercel
+ * @param {Object} req.body - Request body containing:
+ *   - customerId: string (required) - MongoDB ObjectId of the customer to delete
  */
-export default async function handler(req, res) {
-    // CORS Headers
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-    if (req.method === "OPTIONS") {
-        return res.status(200).end();
-    }
-
+router.post('/', async (req, res) => {
     try {
-        // Only allow POST requests
-        if (req.method !== 'POST') {
-            return res.status(405).json({ 
-                error: 'Method not allowed' 
-            });
-        }
-
         // Parse and validate request body
         const { customerId } = req.body;
 
@@ -97,5 +75,7 @@ export default async function handler(req, res) {
             error: 'Failed to delete customer. Please try again later.'
         });
     }
-}
+});
+
+export default router;
 

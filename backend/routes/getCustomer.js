@@ -1,53 +1,28 @@
 /**
- * Get Customer Details API Endpoint
+ * Get Customer Details Route
  * 
- * This serverless function handles GET requests to retrieve detailed information
+ * This route handles GET requests to retrieve detailed information
  * about a single customer, including their transaction history and computed
  * financial summaries (total debt, total paid, and current balance).
- * 
- * Vercel Serverless Functions:
- * - Each API route file exports a default handler function
- * - The handler receives (req, res) parameters
- * - Query parameters are accessed via req.query
- * - Functions use getDb() to access cached MongoDB connections
- * - Responses are sent as JSON using res.json()
  */
 
-import { getDb } from './_db.js';
+import { getDb } from '../db.js';
 import { ObjectId } from 'mongodb';
+import express from 'express';
+
+const router = express.Router();
 
 /**
- * Default handler for the getCustomer endpoint
+ * GET /api/getCustomer?id=CUSTOMER_ID
  * 
- * @param {Object} req - Request object from Vercel
- * @param {Object} res - Response object from Vercel
+ * @param {string} req.query.id - MongoDB ObjectId of the customer
  */
-export default async function handler(req, res) {
-    // CORS Headers
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-    if (req.method === "OPTIONS") {
-        return res.status(200).end();
-    }
-
+router.get('/', async (req, res) => {
     try {
-        // Only allow GET requests
-        // GET is the appropriate HTTP method for retrieving data
-        // without modifying server state
-        if (req.method !== 'GET') {
-            return res.status(405).json({ 
-                error: 'Method not allowed' 
-            });
-        }
-
         // Extract customer ID from query parameters
-        // The endpoint is called as: /api/getCustomer?id=CUSTOMER_ID
         const customerId = req.query.id;
 
         // Validate customer ID is provided
-        // Without an ID, we cannot identify which customer to retrieve
         if (!customerId) {
             return res.status(400).json({ 
                 error: 'Customer ID is required' 
@@ -55,12 +30,9 @@ export default async function handler(req, res) {
         }
 
         // Get database connection
-        // getDb() returns a cached connection, which is efficient for
-        // serverless functions that may be invoked multiple times
         const db = await getDb();
 
         // Validate that customerId is a valid MongoDB ObjectId format
-        // This prevents errors when querying the database
         let objectId;
         try {
             objectId = new ObjectId(customerId);
@@ -71,12 +43,10 @@ export default async function handler(req, res) {
         }
 
         // Fetch customer from database
-        // We use ObjectId to match the _id field in MongoDB
         const customer = await db.collection('customers')
             .findOne({ _id: objectId });
 
         // Check if customer exists
-        // If not found, return 404 Not Found status
         if (!customer) {
             return res.status(404).json({ 
                 error: 'Customer not found' 
@@ -84,16 +54,12 @@ export default async function handler(req, res) {
         }
 
         // Fetch all transactions for this customer
-        // Transactions are linked to customers via customerId field
-        // Sort by date descending (newest first) for better UX
         const transactions = await db.collection('transactions')
             .find({ customerId: customerId })
             .sort({ date: -1, createdAt: -1 }) // Sort by date, then createdAt if date is same
             .toArray();
 
         // Map transactions to the expected format
-        // We transform the MongoDB document structure to match
-        // what the frontend expects
         const mappedTransactions = transactions.map((transaction) => {
             return {
                 id: transaction._id.toString(),
@@ -108,11 +74,6 @@ export default async function handler(req, res) {
         });
 
         // Compute financial totals from transactions
-        // We compute totals here rather than storing them in the customer
-        // document to ensure data consistency. If we stored totals, we'd
-        // need to update them every time a transaction is added/modified,
-        // which could lead to inconsistencies. Computing on-the-fly ensures
-        // the data is always accurate based on the current transaction records.
         let totalDebt = 0;
         let totalPaid = 0;
 
@@ -133,7 +94,6 @@ export default async function handler(req, res) {
         const balance = totalDebt - totalPaid;
 
         // Return customer details with computed statistics and transactions
-        // This format matches what the frontend expects
         return res.status(200).json({
             id: customer._id.toString(),
             name: customer.name || '',
@@ -148,7 +108,6 @@ export default async function handler(req, res) {
 
     } catch (error) {
         // Handle database errors and other exceptions
-        // We log the error for debugging but return a user-friendly message
         console.error('Error fetching customer:', error);
 
         // Return generic error message to avoid exposing internal details
@@ -156,8 +115,7 @@ export default async function handler(req, res) {
             error: 'Failed to fetch customer. Please try again later.'
         });
     }
-}
+});
 
-
-
+export default router;
 

@@ -1,18 +1,14 @@
 /**
- * MongoDB Connection Helper for Vercel Serverless Functions
+ * MongoDB Connection Helper for Express Server
  * 
  * This module provides a reusable database connection that is cached globally
- * to avoid reconnecting on every serverless function invocation.
+ * to avoid reconnecting on every request.
  */
 
 import { MongoClient } from 'mongodb';
 
 /**
  * Global connection cache
- * 
- * Vercel serverless functions can be reused across multiple requests in the same
- * container instance. By caching the connection globally, we avoid the overhead
- * of establishing a new MongoDB connection on every function invocation.
  * 
  * The cache structure:
  * - cached.conn: The database instance (null if not connected)
@@ -32,7 +28,7 @@ if (!cached) {
  * 
  * This function returns a cached database connection if available, or creates
  * a new connection if one doesn't exist. The connection is reused across
- * multiple serverless function invocations within the same container.
+ * multiple requests.
  * 
  * @returns {Promise<Db>} MongoDB database instance for "chocair_fresh"
  * 

@@ -4,7 +4,7 @@
    ==================================== */
 
 // Backend API Base URL
-const BASE = "https://chocair-fresh-debt-system-e2rsgk57e-mhmds-projects-fc809501.vercel.app";
+const BASE = "http://localhost:3000";
 
 /**
  * Fetch all customers from the backend API
