@@ -156,3 +156,4 @@ async function loadSummary() {
         totalDebtElement.textContent = 'Error';
     }
 }
+
