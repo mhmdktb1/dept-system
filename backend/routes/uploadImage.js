@@ -2,17 +2,42 @@
 import { google } from 'googleapis';
 import { formidable } from 'formidable';
 import fs from 'fs';
+import path from 'path';
 
 const router = express.Router();
 
 // Initialize Google Auth
 const getDriveClient = () => {
-    const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-    if (!serviceAccountJson) {
-        throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON environment variable is missing');
+    let credentials;
+    
+    // 1. Try Environment Variable (Production)
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+        try {
+            credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+        } catch (e) {
+            console.error('Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON:', e);
+        }
+    }
+    
+    // 2. Try Local File (Development)
+    if (!credentials) {
+        try {
+            // Assuming this file is in backend/routes/, and service-account.json is in backend/
+            const keyFilePath = path.join(process.cwd(), 'service-account.json');
+            if (fs.existsSync(keyFilePath)) {
+                const keyFileContent = fs.readFileSync(keyFilePath, 'utf-8');
+                credentials = JSON.parse(keyFileContent);
+                console.log('Using local service-account.json');
+            }
+        } catch (e) {
+            console.error('Failed to read local service-account.json:', e);
+        }
     }
 
-    const credentials = JSON.parse(serviceAccountJson);
+    if (!credentials) {
+        throw new Error('Google Service Account credentials not found (Env Var or File)');
+    }
+
     const auth = new google.auth.GoogleAuth({
         credentials,
         scopes: ['https://www.googleapis.com/auth/drive.file']

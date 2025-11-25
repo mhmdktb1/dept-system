@@ -790,14 +790,15 @@ function initializeEventListeners() {
                     });
 
                     if (!uploadResponse.ok) {
-                        throw new Error('Failed to upload image');
+                        const errorData = await uploadResponse.json().catch(() => ({}));
+                        throw new Error(errorData.error || 'Failed to upload image');
                     }
 
                     const uploadResult = await uploadResponse.json();
                     invoiceImageUrl = uploadResult.fileUrl;
                 } catch (error) {
                     console.error('Image upload error:', error);
-                    alert('Failed to upload image. Debt will not be added.');
+                    alert('Failed to upload image: ' + error.message);
                     return;
                 }
             }
