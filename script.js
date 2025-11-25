@@ -602,6 +602,81 @@ function sortCustomers(sortOption) {
 }
 
 // ====================================
+// GOOGLE DRIVE INTEGRATION
+// ====================================
+
+// TODO: Replace these with your actual Google Cloud Console credentials
+const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID_HERE';
+const GOOGLE_API_KEY = 'YOUR_API_KEY_HERE';
+const GOOGLE_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+let tokenClient;
+let gapiInited = false;
+let gisInited = false;
+
+/**
+ * Initialize Google API Client
+ */
+function gapiLoaded() {
+    gapi.load('client', async () => {
+        await gapi.client.init({
+            apiKey: GOOGLE_API_KEY,
+            discoveryDocs: [GOOGLE_DISCOVERY_DOC],
+        });
+        gapiInited = true;
+        enableGoogleButton();
+    });
+}
+
+/**
+ * Initialize Google Identity Services
+ */
+function gisLoaded() {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: GOOGLE_SCOPES,
+        callback: '', // defined later
+    });
+    gisInited = true;
+    enableGoogleButton();
+}
+
+/**
+ * Enable the Google Drive button if both libraries are loaded
+ */
+function enableGoogleButton() {
+    const btn = document.getElementById('googleDriveBtn');
+    if (btn && gapiInited && gisInited) {
+        btn.disabled = false;
+    }
+}
+
+/**
+ * Handle Google Drive Connect Click
+ */
+async function handleGoogleAuthClick() {
+    if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID_HERE') {
+        alert('Please configure your Google Client ID and API Key in script.js');
+        return;
+    }
+
+    tokenClient.callback = async (resp) => {
+        if (resp.error !== undefined) {
+            throw (resp);
+        }
+        document.getElementById('googleDriveBtn').innerText = 'Connected';
+        showToast('Connected to Google Drive', 'success');
+    };
+
+    if (gapi.client.getToken() === null) {
+        tokenClient.requestAccessToken({prompt: 'consent'});
+    } else {
+        tokenClient.requestAccessToken({prompt: ''});
+    }
+}
+
+// ====================================
 // UTILITY FUNCTIONS
 // ====================================
 
@@ -952,6 +1027,12 @@ function initializeEventListeners() {
             sortCustomers(e.target.value);
         });
     }
+
+    // Google Drive Button
+    const googleDriveBtn = document.getElementById('googleDriveBtn');
+    if (googleDriveBtn) {
+        googleDriveBtn.addEventListener('click', handleGoogleAuthClick);
+    }
     
     // Eye Toggle Button (Total Debt Visibility)
     const eyeToggleBtn = document.getElementById('eyeToggleBtn');
@@ -981,6 +1062,10 @@ function initializeEventListeners() {
 async function initializeApp() {
     // Set up event listeners
     initializeEventListeners();
+
+    // Initialize Google Libraries if loaded
+    if (typeof gapi !== 'undefined') gapiLoaded();
+    if (typeof google !== 'undefined') gisLoaded();
     
     // Load initial data
     try {

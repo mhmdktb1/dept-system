@@ -308,6 +308,26 @@ async function get(url) {
         console.error(`✗ FAILURE: ${error.message}\n`);
     }
 
+    // STEP 9 — Cleanup: Delete the test customer
+    try {
+        console.log("STEP 9 — Cleanup: Delete the test customer");
+        if (customerId) {
+            const result = await post(`${BASE}/api/deleteCustomer`, {
+                customerId: customerId
+            });
+            
+            if (result.success) {
+                console.log(`✓ SUCCESS: Test customer deleted\n`);
+            } else {
+                throw new Error("Failed to delete test customer");
+            }
+        } else {
+            console.log("⚠ SKIPPED: No customer ID to delete\n");
+        }
+    } catch (error) {
+        console.error(`✗ FAILURE: ${error.message}\n`);
+    }
+
     console.log("=========================================");
     console.log("🔥 SMOKE TEST FINISHED 🔥");
     console.log("=========================================");
