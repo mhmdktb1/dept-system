@@ -2,42 +2,13 @@
 import { google } from 'googleapis';
 import { formidable } from 'formidable';
 import fs from 'fs';
-import path from 'path';
+import loadServiceAccount from './_loadServiceAccount.js';
 
 const router = express.Router();
 
-// Initialize Google Auth
+// Initialize Google Drive Client
 const getDriveClient = () => {
-    let credentials;
-    
-    // 1. Try Environment Variable (Production)
-    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-        try {
-            credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
-        } catch (e) {
-            console.error('Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON:', e);
-        }
-    }
-    
-    // 2. Try Local File (Development)
-    if (!credentials) {
-        try {
-            // Assuming this file is in backend/routes/, and service-account.json is in backend/
-            const keyFilePath = path.join(process.cwd(), 'service-account.json');
-            if (fs.existsSync(keyFilePath)) {
-                const keyFileContent = fs.readFileSync(keyFilePath, 'utf-8');
-                credentials = JSON.parse(keyFileContent);
-                console.log('Using local service-account.json');
-            }
-        } catch (e) {
-            console.error('Failed to read local service-account.json:', e);
-        }
-    }
-
-    if (!credentials) {
-        throw new Error('Google Service Account credentials not found (Env Var or File)');
-    }
-
+    const credentials = loadServiceAccount();
     const auth = new google.auth.GoogleAuth({
         credentials,
         scopes: ['https://www.googleapis.com/auth/drive.file']
@@ -50,12 +21,16 @@ router.post('/', async (req, res) => {
     const form = formidable({
         maxFileSize: 20 * 1024 * 1024, // 20MB
         keepExtensions: true,
+        allowEmptyFiles: false,
     });
 
     form.parse(req, async (err, fields, files) => {
         if (err) {
             console.error('Form parsing error:', err);
-            return res.status(400).json({ error: 'Error parsing file upload' });
+            if (err.code === 1009 || err.toString().includes('maxFileSize')) {
+                return res.status(400).json({ error: 'File is too large. Max size is 20MB.' });
+            }
+            return res.status(400).json({ error: 'Error parsing file upload: ' + err.message });
         }
 
         // formidable v3 returns arrays for files. 'image' is the field name from frontend.
@@ -65,7 +40,7 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        // Validate mime type
+        // Validate mime type strictly
         const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
         if (!allowedTypes.includes(uploadedFile.mimetype)) {
             return res.status(400).json({ error: 'Invalid file type. Only JPEG, PNG, and WebP are allowed.' });
