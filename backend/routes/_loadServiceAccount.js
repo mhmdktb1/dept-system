@@ -20,11 +20,20 @@ const loadServiceAccount = () => {
         console.log('Found GOOGLE_SERVICE_ACCOUNT_JSON env var. Length:', rawJson.length);
         try {
             // Clean up the string
+            // 1. Remove surrounding quotes if they exist
             if (rawJson.startsWith('"') && rawJson.endsWith('"')) {
                 rawJson = rawJson.slice(1, -1);
             }
+
+            // 2. Remove Markdown code blocks (common copy-paste error)
+            rawJson = rawJson.replace(/^```json\s*/i, '')
+                             .replace(/^```\s*/i, '')
+                             .replace(/\s*```$/i, '');
             
+            // 3. Fix escaped newlines
             rawJson = rawJson.replace(/\\n/g, '\n');
+            
+            // 4. Trim whitespace
             rawJson = rawJson.trim();
 
             credentials = JSON.parse(rawJson);
