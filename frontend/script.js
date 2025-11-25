@@ -152,8 +152,9 @@ async function addCustomer(name, phone, note) {
  * @param {string} customerId - Customer ID
  * @param {number} amount - Debt amount
  * @param {string} note - Optional note
+ * @param {string} invoiceImageUrl - Optional invoice image URL
  */
-async function addDebt(customerId, amount, note) {
+async function addDebt(customerId, amount, note, invoiceImageUrl) {
     try {
         const response = await fetch(`${BASE_URL}/api/addDebt`, {
             method: 'POST',
@@ -164,7 +165,7 @@ async function addDebt(customerId, amount, note) {
                 customerId: customerId,
                 amount: amount,
                 note: note || '',
-                invoiceImageUrl: null // Image upload not implemented yet
+                invoiceImageUrl: invoiceImageUrl || null
             })
         });
         
@@ -602,81 +603,6 @@ function sortCustomers(sortOption) {
 }
 
 // ====================================
-// GOOGLE DRIVE INTEGRATION
-// ====================================
-
-// TODO: Replace these with your actual Google Cloud Console credentials
-const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID_HERE';
-const GOOGLE_API_KEY = 'YOUR_API_KEY_HERE';
-const GOOGLE_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
-const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
-
-let tokenClient;
-let gapiInited = false;
-let gisInited = false;
-
-/**
- * Initialize Google API Client
- */
-function gapiLoaded() {
-    gapi.load('client', async () => {
-        await gapi.client.init({
-            apiKey: GOOGLE_API_KEY,
-            discoveryDocs: [GOOGLE_DISCOVERY_DOC],
-        });
-        gapiInited = true;
-        enableGoogleButton();
-    });
-}
-
-/**
- * Initialize Google Identity Services
- */
-function gisLoaded() {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: GOOGLE_SCOPES,
-        callback: '', // defined later
-    });
-    gisInited = true;
-    enableGoogleButton();
-}
-
-/**
- * Enable the Google Drive button if both libraries are loaded
- */
-function enableGoogleButton() {
-    const btn = document.getElementById('googleDriveBtn');
-    if (btn && gapiInited && gisInited) {
-        btn.disabled = false;
-    }
-}
-
-/**
- * Handle Google Drive Connect Click
- */
-async function handleGoogleAuthClick() {
-    if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID_HERE') {
-        alert('Please configure your Google Client ID and API Key in script.js');
-        return;
-    }
-
-    tokenClient.callback = async (resp) => {
-        if (resp.error !== undefined) {
-            throw (resp);
-        }
-        document.getElementById('googleDriveBtn').innerText = 'Connected';
-        showToast('Connected to Google Drive', 'success');
-    };
-
-    if (gapi.client.getToken() === null) {
-        tokenClient.requestAccessToken({prompt: 'consent'});
-    } else {
-        tokenClient.requestAccessToken({prompt: ''});
-    }
-}
-
-// ====================================
 // UTILITY FUNCTIONS
 // ====================================
 
@@ -840,14 +766,45 @@ function initializeEventListeners() {
             
             const amount = parseFloat(document.getElementById('debtAmount').value);
             const note = document.getElementById('debtNote').value.trim();
+            const imageFile = document.getElementById('debtImage').files[0];
             
             if (isNaN(amount) || amount <= 0) {
                 alert('Please enter a valid amount');
                 return;
             }
+
+            let invoiceImageUrl = null;
+
+            // Upload image if selected
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('image', imageFile);
+
+                try {
+                    // Show uploading toast
+                    showToast('Uploading image...', 'info');
+                    
+                    const uploadResponse = await fetch(`${BASE_URL}/api/uploadImage`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!uploadResponse.ok) {
+                        const errorData = await uploadResponse.json().catch(() => ({}));
+                        throw new Error(errorData.error || 'Failed to upload image');
+                    }
+
+                    const uploadResult = await uploadResponse.json();
+                    invoiceImageUrl = uploadResult.fileUrl;
+                } catch (error) {
+                    console.error('Image upload error:', error);
+                    alert('Failed to upload image: ' + error.message);
+                    return;
+                }
+            }
             
             try {
-                await addDebt(currentCustomerId, amount, note);
+                await addDebt(currentCustomerId, amount, note, invoiceImageUrl);
                 hideModal('addDebtModal');
                 resetForm('addDebtForm');
             } catch (error) {
@@ -1062,10 +1019,6 @@ function initializeEventListeners() {
 async function initializeApp() {
     // Set up event listeners
     initializeEventListeners();
-
-    // Initialize Google Libraries if loaded
-    if (typeof gapi !== 'undefined') gapiLoaded();
-    if (typeof google !== 'undefined') gisLoaded();
     
     // Load initial data
     try {
