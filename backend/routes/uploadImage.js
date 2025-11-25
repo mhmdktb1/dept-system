@@ -2,6 +2,7 @@ import express from 'express';
 import { google } from 'googleapis';
 import { formidable } from 'formidable';
 import fs from 'fs';
+import { PassThrough } from 'stream';
 import loadServiceAccount from './_loadServiceAccount.js';
 
 const router = express.Router();
@@ -37,16 +38,20 @@ router.post('/', async (req, res) => {
                 return res.status(400).json({ error: 'No file uploaded' });
             }
 
-            // Read file into buffer manually as requested
+            // Read file into buffer manually
             const fileData = await fs.promises.readFile(uploadedFile.filepath);
             const buffer = Buffer.from(fileData);
 
-            // Delete temp file immediately after reading to avoid "File not found" issues later
+            // Delete temp file immediately after reading
             try {
                 await fs.promises.unlink(uploadedFile.filepath);
             } catch (unlinkErr) {
                 console.warn('Failed to delete temp file:', unlinkErr);
             }
+
+            // Convert buffer to stream for Google Drive API
+            const bufferStream = new PassThrough();
+            bufferStream.end(buffer);
 
             const drive = getDriveClient();
             const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
@@ -62,7 +67,7 @@ router.post('/', async (req, res) => {
 
             const media = {
                 mimeType: uploadedFile.mimetype,
-                body: buffer
+                body: bufferStream
             };
 
             const response = await drive.files.create({
@@ -78,6 +83,7 @@ router.post('/', async (req, res) => {
 
             res.json({
                 success: true,
+                googleFileId: response.data.id,
                 imageUrl: `https://drive.google.com/uc?id=${response.data.id}`
             });
 
