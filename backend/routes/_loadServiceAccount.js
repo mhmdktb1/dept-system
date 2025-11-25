@@ -13,41 +13,47 @@ const loadServiceAccount = () => {
     let credentials;
     let rawJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 
+    console.log('Loading Google Credentials...');
+
     // 1. Try Environment Variable
     if (rawJson) {
+        console.log('Found GOOGLE_SERVICE_ACCOUNT_JSON env var. Length:', rawJson.length);
         try {
             // Clean up the string
-            // Remove surrounding quotes if they exist (sometimes added by shell)
             if (rawJson.startsWith('"') && rawJson.endsWith('"')) {
                 rawJson = rawJson.slice(1, -1);
             }
             
-            // Handle escaped newlines (common in some env var editors)
-            // Replace literal "\n" with actual newline character
             rawJson = rawJson.replace(/\\n/g, '\n');
-            
-            // Trim whitespace
             rawJson = rawJson.trim();
 
             credentials = JSON.parse(rawJson);
+            console.log('Successfully parsed credentials from Env Var.');
         } catch (error) {
-            console.error('Error parsing GOOGLE_SERVICE_ACCOUNT_JSON environment variable:', error.message);
-            console.error('Raw value start:', rawJson.substring(0, 20));
-            throw new Error('Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON. Ensure it is valid JSON.');
+            console.error('Error parsing GOOGLE_SERVICE_ACCOUNT_JSON:', error.message);
+            console.error('Raw value start:', rawJson.substring(0, 50) + '...');
+        }
+    } else {
+        console.log('GOOGLE_SERVICE_ACCOUNT_JSON env var is missing or empty.');
+    }
+
+    // 2. Try Render Secret File (Standard Path)
+    if (!credentials) {
+        const secretPath = '/etc/secrets/service-account.json';
+        if (fs.existsSync(secretPath)) {
+            console.log('Found Render secret file at:', secretPath);
+            try {
+                credentials = JSON.parse(fs.readFileSync(secretPath, 'utf-8'));
+                console.log('Successfully parsed credentials from Secret File.');
+            } catch (e) {
+                console.error('Failed to parse secret file:', e.message);
+            }
         }
     }
 
-    // 2. Try Local File (Development fallback)
+    // 3. Try Local File (Development fallback)
     if (!credentials) {
         try {
-            // Look for service-account.json in the backend root (parent of routes)
-            // process.cwd() in Render is usually the root of the repo or the backend folder depending on start command.
-            // Assuming start command is "node server.js" inside backend/ or "node backend/server.js" from root.
-            // Let's try to find it relative to this file.
-            
-            // This file is in backend/routes/
-            // service-account.json is likely in backend/
-            
             const localPath = path.join(process.cwd(), 'service-account.json');
             const altPath = path.join(process.cwd(), 'backend', 'service-account.json');
             
@@ -66,6 +72,7 @@ const loadServiceAccount = () => {
     }
 
     if (!credentials) {
+        console.error('Available Environment Variables:', Object.keys(process.env).join(', '));
         throw new Error('Google Service Account credentials not found. Set GOOGLE_SERVICE_ACCOUNT_JSON env var or provide service-account.json.');
     }
 
