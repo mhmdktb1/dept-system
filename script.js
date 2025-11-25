@@ -236,6 +236,125 @@ async function addPayment(customerId, amount, note) {
     }
 }
 
+/**
+ * Update customer details
+ * @param {string} customerId - Customer ID
+ * @param {string} name - Customer name
+ * @param {string} phone - Customer phone number
+ * @param {string} note - Optional notes
+ */
+async function updateCustomer(customerId, name, phone, note) {
+    try {
+        const response = await fetch(`${BASE_URL}/api/updateCustomer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                customerId: customerId,
+                name: name,
+                phone: phone,
+                note: note || ''
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Failed to update customer' }));
+            throw new Error(errorData.error || 'Failed to update customer');
+        }
+
+        const result = await response.json();
+        
+        // Reload customer details
+        await loadCustomerDetails(customerId);
+        
+        // Reload customer list
+        await loadCustomers();
+        
+        // Show success message
+        showToast('Customer updated successfully', 'success');
+        
+        return result;
+    } catch (error) {
+        console.error('Error updating customer:', error);
+        alert('Error updating customer: ' + error.message);
+        throw error;
+    }
+}
+
+/**
+ * Delete a customer
+ * @param {string} customerId - Customer ID
+ */
+async function deleteCustomer(customerId) {
+    if (!confirm('Are you sure you want to delete this customer? This action cannot be undone and will delete all their transaction history.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${BASE_URL}/api/deleteCustomer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                customerId: customerId
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Failed to delete customer' }));
+            throw new Error(errorData.error || 'Failed to delete customer');
+        }
+
+        // Clear current selection
+        currentCustomerId = null;
+        const detailsPanel = document.getElementById('detailsPanel');
+        const noSelectionPlaceholder = document.getElementById('noSelectionPlaceholder');
+        
+        if (detailsPanel) detailsPanel.style.display = 'none';
+        if (noSelectionPlaceholder) noSelectionPlaceholder.style.display = 'flex';
+        
+        // Reload customer list
+        await loadCustomers();
+        
+        // Show success message
+        showToast('Customer deleted successfully', 'success');
+        
+    } catch (error) {
+        console.error('Error deleting customer:', error);
+        alert('Error deleting customer: ' + error.message);
+        throw error;
+    }
+}
+
+/**
+ * Close customer balance (pay off entire debt)
+ * @param {string} customerId - Customer ID
+ */
+async function closeBalance(customerId) {
+    // Find customer to get current balance
+    const customer = allCustomers.find(c => c.id === customerId);
+    if (!customer) return;
+    
+    const balance = customer.balance || 0;
+    
+    if (balance <= 0) {
+        alert('Customer has no outstanding debt to pay.');
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to close the balance of $${balance.toFixed(2)}? This will add a payment for the full amount.`)) {
+        return;
+    }
+    
+    try {
+        await addPayment(customerId, balance, 'Balance closed via "Close Balance"');
+    } catch (error) {
+        // Error handled in addPayment
+    }
+}
+
 // ====================================
 // UI RENDERING FUNCTIONS
 // ====================================
@@ -731,6 +850,90 @@ function initializeEventListeners() {
         cancelPaymentBtn.addEventListener('click', () => {
             hideModal('addPaymentModal');
             resetForm('addPaymentForm');
+        });
+    }
+
+    // Edit Customer Button
+    const editCustomerBtn = document.getElementById('editCustomerBtn');
+    if (editCustomerBtn) {
+        editCustomerBtn.addEventListener('click', () => {
+            if (!currentCustomerId) {
+                alert('Please select a customer first');
+                return;
+            }
+            
+            const customer = allCustomers.find(c => c.id === currentCustomerId);
+            if (!customer) return;
+            
+            // Populate form
+            document.getElementById('editCustomerName').value = customer.name || '';
+            document.getElementById('editCustomerPhone').value = customer.phone || '';
+            document.getElementById('editCustomerNotes').value = customer.note || '';
+            
+            showModal('editCustomerModal');
+        });
+    }
+    
+    // Edit Customer Form
+    const editCustomerForm = document.getElementById('editCustomerForm');
+    if (editCustomerForm) {
+        editCustomerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentCustomerId) return;
+            
+            const name = document.getElementById('editCustomerName').value.trim();
+            const phone = document.getElementById('editCustomerPhone').value.trim();
+            const note = document.getElementById('editCustomerNotes').value.trim();
+            
+            if (!name || !phone) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            try {
+                await updateCustomer(currentCustomerId, name, phone, note);
+                hideModal('editCustomerModal');
+            } catch (error) {
+                // Error handled in updateCustomer
+            }
+        });
+    }
+    
+    // Close Edit Customer Modal
+    const closeEditCustomerModal = document.getElementById('closeEditCustomerModal');
+    const cancelEditCustomerBtn = document.getElementById('cancelEditCustomerBtn');
+    if (closeEditCustomerModal) {
+        closeEditCustomerModal.addEventListener('click', () => {
+            hideModal('editCustomerModal');
+        });
+    }
+    if (cancelEditCustomerBtn) {
+        cancelEditCustomerBtn.addEventListener('click', () => {
+            hideModal('editCustomerModal');
+        });
+    }
+    
+    // Delete Customer Button
+    const deleteCustomerBtn = document.getElementById('deleteCustomerBtn');
+    if (deleteCustomerBtn) {
+        deleteCustomerBtn.addEventListener('click', () => {
+            if (!currentCustomerId) {
+                alert('Please select a customer first');
+                return;
+            }
+            deleteCustomer(currentCustomerId);
+        });
+    }
+    
+    // Close Balance Button
+    const closeBalanceBtn = document.getElementById('closeBalanceBtn');
+    if (closeBalanceBtn) {
+        closeBalanceBtn.addEventListener('click', () => {
+            if (!currentCustomerId) {
+                alert('Please select a customer first');
+                return;
+            }
+            closeBalance(currentCustomerId);
         });
     }
     
