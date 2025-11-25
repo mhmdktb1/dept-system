@@ -27,26 +27,27 @@ router.post('/', async (req, res) => {
     form.parse(req, async (err, fields, files) => {
         if (err) {
             console.error('Form parsing error:', err);
-            if (err.code === 1009 || err.toString().includes('maxFileSize')) {
-                return res.status(400).json({ error: 'File is too large. Max size is 20MB.' });
-            }
             return res.status(400).json({ error: 'Error parsing file upload: ' + err.message });
         }
 
-        // formidable v3 returns arrays for files. 'image' is the field name from frontend.
-        const uploadedFile = Array.isArray(files.image) ? files.image[0] : files.image;
-
-        if (!uploadedFile) {
-            return res.status(400).json({ error: 'No file uploaded' });
-        }
-
-        // Validate mime type strictly
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        if (!allowedTypes.includes(uploadedFile.mimetype)) {
-            return res.status(400).json({ error: 'Invalid file type. Only JPEG, PNG, and WebP are allowed.' });
-        }
-
         try {
+            const uploadedFile = Array.isArray(files.image) ? files.image[0] : files.image;
+
+            if (!uploadedFile) {
+                return res.status(400).json({ error: 'No file uploaded' });
+            }
+
+            // Read file into buffer manually as requested
+            const fileData = await fs.promises.readFile(uploadedFile.filepath);
+            const buffer = Buffer.from(fileData);
+
+            // Delete temp file immediately after reading to avoid "File not found" issues later
+            try {
+                await fs.promises.unlink(uploadedFile.filepath);
+            } catch (unlinkErr) {
+                console.warn('Failed to delete temp file:', unlinkErr);
+            }
+
             const drive = getDriveClient();
             const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
@@ -61,7 +62,7 @@ router.post('/', async (req, res) => {
 
             const media = {
                 mimeType: uploadedFile.mimetype,
-                body: fs.createReadStream(uploadedFile.filepath)
+                body: buffer
             };
 
             const response = await drive.files.create({
@@ -70,29 +71,19 @@ router.post('/', async (req, res) => {
                 fields: 'id'
             });
 
-            const fileId = response.data.id;
-
-            // Make file public
             await drive.permissions.create({
-                fileId: fileId,
-                requestBody: {
-                    role: 'reader',
-                    type: 'anyone'
-                }
+                fileId: response.data.id,
+                requestBody: { role: "reader", type: "anyone" }
             });
 
-            // Construct public URL
-            const imageUrl = `https://drive.google.com/uc?id=${fileId}`;
-
-            res.status(200).json({
+            res.json({
                 success: true,
-                fileId: fileId,
-                fileUrl: imageUrl
+                imageUrl: `https://drive.google.com/uc?id=${response.data.id}`
             });
 
         } catch (error) {
-            console.error('Google Drive upload error:', error);
-            res.status(500).json({ error: 'Failed to upload image to Google Drive: ' + error.message });
+            console.error('Upload error:', error);
+            res.status(500).json({ error: 'Upload failed: ' + error.message });
         }
     });
 });
