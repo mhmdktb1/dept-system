@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: chocair-fresh-backend
+    env: node
+    root: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: PORT
+        value: 10000
