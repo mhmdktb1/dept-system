@@ -1,63 +1,129 @@
 /* ====================================
    Chocair Fresh - Debt Manager Scripts
    Single-Page Application
+   Connected to Render Backend
    ==================================== */
 
 // Backend API Base URL
-const BASE = "https://dept-system.onrender.com";
+const BASE_URL = "https://dept-system.onrender.com"; // Production Backend
+
+// Global state
+let allCustomers = [];
+let currentCustomerId = null;
+let isDebtVisible = true;
+
+// ====================================
+// API FUNCTIONS
+// ====================================
 
 /**
- * Fetch all customers from the backend API
- * @returns {Promise<Array>} Array of customer objects with id, name, receipts, totalDebt, totalPaid, and balance
+ * Load all customers from the backend
+ * @returns {Promise<Array>} Array of customer objects
  */
-async function fetchCustomers() {
+async function loadCustomers() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const customerList = document.getElementById('customerList');
+    const emptyState = document.getElementById('emptyState');
+    
     try {
-        const response = await fetch(`${BASE}/api/getCustomers`);
+        // Show loading state
+        if (loadingIndicator) loadingIndicator.style.display = 'block';
+        if (customerList) customerList.innerHTML = '';
+        if (emptyState) emptyState.style.display = 'none';
+        
+        const response = await fetch(`${BASE_URL}/api/getCustomers`);
         
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Failed to fetch customers' }));
             throw new Error(errorData.error || 'Failed to fetch customers');
         }
         
-        const customers = await response.json();
-        return customers;
+        allCustomers = await response.json();
+        
+        // Update UI
+        renderCustomerList(allCustomers);
+        updateTotalDebt();
+        
+        // Hide loading, show empty state if needed
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        if (allCustomers.length === 0 && emptyState) {
+            emptyState.style.display = 'block';
+        }
+        
+        return allCustomers;
     } catch (error) {
+        console.error('Error loading customers:', error);
         alert('Error loading customers: ' + error.message);
+        
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        if (emptyState) emptyState.style.display = 'block';
+        
         throw error;
     }
 }
 
 /**
- * Calculate total outstanding debt from customers array
- * This calculates the sum of all customer balances (totalDebt - totalPaid)
- * @param {Array} customers - Array of customer objects with balance property
- * @returns {number} Total outstanding debt amount
+ * Load detailed information for a specific customer
+ * @param {string} customerId - The customer ID
  */
-function getTotalDebt(customers) {
-    if (!customers || customers.length === 0) {
-        return 0;
-    }
+async function loadCustomerDetails(customerId) {
+    const detailsPanel = document.getElementById('detailsPanel');
+    const noSelectionPlaceholder = document.getElementById('noSelectionPlaceholder');
+    const customerInfo = document.getElementById('customerInfo');
+    const transactionsList = document.getElementById('transactionsList');
     
-    return customers.reduce((total, customer) => {
-        // Use balance (totalDebt - totalPaid) instead of just totalDebt
-        // This gives the actual amount owed, not just total debt incurred
-        return total + (customer.balance || 0);
-    }, 0);
+    try {
+        // Show loading state
+        if (customerInfo) customerInfo.innerHTML = '<div class="loading">Loading customer details...</div>';
+        if (transactionsList) transactionsList.innerHTML = '';
+        
+        const response = await fetch(`${BASE_URL}/api/getCustomer?id=${customerId}`);
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Failed to fetch customer details' }));
+            throw new Error(errorData.error || 'Failed to fetch customer details');
+        }
+        
+        const customer = await response.json();
+        currentCustomerId = customerId;
+        
+        // Update UI
+        renderCustomerDetails(customer);
+        renderTransactions(customer.transactions || []);
+        
+        // Show details panel
+        if (detailsPanel) detailsPanel.style.display = 'flex';
+        if (noSelectionPlaceholder) noSelectionPlaceholder.style.display = 'none';
+        
+        // Update active customer in list
+        updateActiveCustomer(customerId);
+        
+    } catch (error) {
+        console.error('Error loading customer details:', error);
+        alert('Error loading customer details: ' + error.message);
+        
+        if (customerInfo) customerInfo.innerHTML = '<div class="error">Failed to load customer details</div>';
+    }
 }
 
 /**
- * Add a new customer via the backend API
- * @param {Object} customerData - Customer data object with name, phone, and note
- * @returns {Promise<Object>} The created customer object with success status
+ * Add a new customer
+ * @param {string} name - Customer name
+ * @param {string} phone - Customer phone number
+ * @param {string} note - Optional notes
  */
-async function addCustomer(customerData) {
+async function addCustomer(name, phone, note) {
     try {
-        const response = await fetch(`${BASE}/api/addCustomer`, {
+        const response = await fetch(`${BASE_URL}/api/addCustomer`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(customerData)
+            body: JSON.stringify({
+                name: name,
+                phone: phone,
+                note: note || ''
+            })
         });
 
         if (!response.ok) {
@@ -66,94 +132,664 @@ async function addCustomer(customerData) {
         }
 
         const result = await response.json();
+        
+        // Reload customer list
+        await loadCustomers();
+        
+        // Show success message
+        showToast('Customer added successfully', 'success');
+        
         return result;
     } catch (error) {
+        console.error('Error adding customer:', error);
+        alert('Error adding customer: ' + error.message);
         throw error;
     }
 }
 
 /**
- * Upload a file to Google Drive
- * @param {File} file - The file to upload
- * @returns {Promise<string|null>} The public URL of the uploaded file, or null if upload failed
+ * Add a debt transaction for a customer
+ * @param {string} customerId - Customer ID
+ * @param {number} amount - Debt amount
+ * @param {string} note - Optional note
  */
-async function uploadToGoogleDrive(file) {
-    if (!googleAccessToken) {
-        alert("Please press 'Connect Google Drive' first.");
-        return null;
-    }
-
-    const metadata = {
-        name: `${Date.now()}_${file.name}`,
-        parents: [GOOGLE_FOLDER_ID],
-    };
-
-    const form = new FormData();
-    form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-    form.append("file", file);
-
-    const response = await fetch(
-        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
-        {
-            method: "POST",
+async function addDebt(customerId, amount, note) {
+    try {
+        const response = await fetch(`${BASE_URL}/api/addDebt`, {
+            method: 'POST',
             headers: {
-                Authorization: `Bearer ${googleAccessToken}`,
+                'Content-Type': 'application/json',
             },
-            body: form,
+            body: JSON.stringify({
+                customerId: customerId,
+                amount: amount,
+                note: note || '',
+                invoiceImageUrl: null // Image upload not implemented yet
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Failed to add debt' }));
+            throw new Error(errorData.error || 'Failed to add debt');
         }
-    );
-
-    const data = await response.json();
-
-    if (data.id) {
-        return `https://drive.google.com/uc?id=${data.id}`;
-    } else {
-        return null;
+        
+        const result = await response.json();
+        
+        // Reload customer details
+        await loadCustomerDetails(customerId);
+        
+        // Reload customer list to update balances
+        await loadCustomers();
+        
+        // Show success message
+        showToast('Debt added successfully', 'success');
+        
+        return result;
+    } catch (error) {
+        console.error('Error adding debt:', error);
+        alert('Error adding debt: ' + error.message);
+        throw error;
     }
 }
 
 /**
- * Load system summary from the backend API
- * Fetches total outstanding debt and updates the display
- * This function is called on page load to populate the "Total Outstanding Debt" card
- * @returns {Promise<void>}
+ * Add a payment transaction for a customer
+ * @param {string} customerId - Customer ID
+ * @param {number} amount - Payment amount
+ * @param {string} note - Optional note
  */
-async function loadSummary() {
-    const totalDebtElement = document.getElementById('totalDebtAmount');
-    
-    if (!totalDebtElement) {
-        return;
-    }
-
-    // Set loading state
-    totalDebtElement.textContent = 'Loading...';
-
+async function addPayment(customerId, amount, note) {
     try {
-        const response = await fetch(`${BASE}/api/getSummary`);
+        const response = await fetch(`${BASE_URL}/api/addPayment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                customerId: customerId,
+                amount: amount,
+                note: note || ''
+            })
+        });
         
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Failed to fetch summary' }));
-            throw new Error(errorData.error || 'Failed to fetch summary');
+            const errorData = await response.json().catch(() => ({ error: 'Failed to add payment' }));
+            throw new Error(errorData.error || 'Failed to add payment');
         }
-
-        const summary = await response.json();
         
-        // Extract totalOutstandingDebt and format to two decimals
-        const totalOutstandingDebt = summary.totalOutstandingDebt || 0;
+        const result = await response.json();
         
-        // Update the display using the existing updateTotalDebtDisplay function
-        // This ensures the eye toggle functionality still works correctly
-        // The function will handle the visibility state (show/hide with eye icon)
-        if (typeof window.updateTotalDebtDisplay === 'function') {
-            window.updateTotalDebtDisplay(totalOutstandingDebt);
-        } else {
-            // Fallback: directly update the element if function not available yet
-            // This can happen if script.js loads before the inline script in index.html
-            const formattedValue = totalOutstandingDebt.toFixed(2);
-            totalDebtElement.textContent = `$${formattedValue}`;
-        }
+        // Reload customer details
+        await loadCustomerDetails(customerId);
+        
+        // Reload customer list to update balances
+        await loadCustomers();
+        
+        // Show success message
+        showToast('Payment added successfully', 'success');
+        
+        return result;
     } catch (error) {
-        totalDebtElement.textContent = 'Error';
+        console.error('Error adding payment:', error);
+        alert('Error adding payment: ' + error.message);
+        throw error;
     }
 }
 
+// ====================================
+// UI RENDERING FUNCTIONS
+// ====================================
+
+/**
+ * Render the customer list
+ * @param {Array} customers - Array of customer objects
+ */
+function renderCustomerList(customers) {
+    const customerList = document.getElementById('customerList');
+    if (!customerList) return;
+    
+    if (customers.length === 0) {
+        customerList.innerHTML = '';
+        return;
+    }
+    
+    customerList.innerHTML = customers.map(customer => {
+        const balance = customer.balance || 0;
+        const balanceClass = balance > 0 ? 'customer-card__balance--positive' : 
+                            balance === 0 ? 'customer-card__balance--zero' : '';
+        const balanceText = balance > 0 ? `$${Math.abs(balance).toFixed(2)}` : 
+                          balance === 0 ? '$0.00' : 
+                          `-$${Math.abs(balance).toFixed(2)}`;
+        
+        return `
+            <div class="customer-card" data-customer-id="${customer.id}">
+                <div class="customer-card__content">
+                    <h3 class="customer-card__name">${escapeHtml(customer.name || 'Unknown')}</h3>
+                    <div class="customer-card__info">
+                        <span class="customer-card__item">Phone: ${escapeHtml(customer.phone || 'N/A')}</span>
+                        <span class="customer-card__balance ${balanceClass}">Balance: ${balanceText}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Add click event listeners to customer cards
+    customerList.querySelectorAll('.customer-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const customerId = card.getAttribute('data-customer-id');
+            if (customerId) {
+                loadCustomerDetails(customerId);
+            }
+        });
+    });
+}
+
+/**
+ * Update active customer in the list
+ * @param {string} customerId - Active customer ID
+ */
+function updateActiveCustomer(customerId) {
+    document.querySelectorAll('.customer-card').forEach(card => {
+        if (card.getAttribute('data-customer-id') === customerId) {
+            card.classList.add('customer-card--active');
+        } else {
+            card.classList.remove('customer-card--active');
+        }
+    });
+}
+
+/**
+ * Render customer details in the details panel
+ * @param {Object} customer - Customer object with full details
+ */
+function renderCustomerDetails(customer) {
+    const customerInfo = document.getElementById('customerInfo');
+    if (!customerInfo) return;
+    
+    const balance = customer.balance || 0;
+    const balanceClass = balance > 0 ? 'customer-info__value--positive' : 
+                        balance === 0 ? 'customer-info__value--zero' : 
+                        'customer-info__value--negative';
+    const balanceText = balance > 0 ? `$${Math.abs(balance).toFixed(2)}` : 
+                       balance === 0 ? '$0.00' : 
+                       `-$${Math.abs(balance).toFixed(2)}`;
+    
+    customerInfo.innerHTML = `
+        <div class="customer-info__card">
+            <h2 class="customer-info__name">${escapeHtml(customer.name || 'Unknown')}</h2>
+            <div class="customer-info__grid">
+                <div class="customer-info__item">
+                    <span class="customer-info__label">Phone</span>
+                    <span class="customer-info__value">${escapeHtml(customer.phone || 'N/A')}</span>
+                </div>
+                <div class="customer-info__item">
+                    <span class="customer-info__label">Total Debt</span>
+                    <span class="customer-info__value">$${(customer.totalDebt || 0).toFixed(2)}</span>
+                </div>
+                <div class="customer-info__item">
+                    <span class="customer-info__label">Total Paid</span>
+                    <span class="customer-info__value">$${(customer.totalPaid || 0).toFixed(2)}</span>
+                </div>
+                ${customer.note ? `
+                <div class="customer-info__item">
+                    <span class="customer-info__label">Notes</span>
+                    <span class="customer-info__value">${escapeHtml(customer.note)}</span>
+                </div>
+                ` : ''}
+                <div class="customer-info__item customer-info__item--balance">
+                    <span class="customer-info__label">Current Balance</span>
+                    <span class="customer-info__value ${balanceClass}">${balanceText}</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Render transactions list
+ * @param {Array} transactions - Array of transaction objects
+ */
+function renderTransactions(transactions) {
+    const transactionsList = document.getElementById('transactionsList');
+    if (!transactionsList) return;
+    
+    if (!transactions || transactions.length === 0) {
+        transactionsList.innerHTML = '<div class="empty-message">No transactions found</div>';
+        return;
+    }
+    
+    // Sort transactions by date (newest first)
+    const sortedTransactions = [...transactions].sort((a, b) => {
+        return new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0);
+    });
+    
+    transactionsList.innerHTML = sortedTransactions.map(transaction => {
+        const isDebt = transaction.type === 'debt' || transaction.amount < 0;
+        const amount = Math.abs(transaction.amount || 0);
+        const date = new Date(transaction.date || transaction.createdAt || Date.now());
+        const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        return `
+            <div class="transaction-item">
+                <div class="transaction-item__content">
+                    <div class="transaction-item__header">
+                        <span class="transaction-item__date">${formattedDate}</span>
+                        <span class="transaction-item__type transaction-item__type--${isDebt ? 'debt' : 'payment'}">
+                            ${isDebt ? 'DEBT' : 'PAYMENT'}
+                        </span>
+                    </div>
+                    <div class="transaction-item__amount transaction-item__amount--${isDebt ? 'debt' : 'payment'}">
+                        ${isDebt ? '+' : '-'}$${amount.toFixed(2)}
+                    </div>
+                    ${transaction.note ? `
+                    <div class="transaction-item__note">${escapeHtml(transaction.note)}</div>
+                    ` : ''}
+                    ${transaction.invoiceImageUrl ? `
+                    <a href="${transaction.invoiceImageUrl}" target="_blank" class="transaction-item__image">
+                        View Invoice
+                    </a>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Update total outstanding debt display
+ * Calculates sum of all customer balances
+ */
+function updateTotalDebt() {
+    const totalDebt = allCustomers.reduce((sum, customer) => {
+        return sum + (customer.balance || 0);
+    }, 0);
+    
+    const totalDebtElement = document.getElementById('totalDebtAmount');
+    if (!totalDebtElement) return;
+    
+    if (isDebtVisible) {
+        totalDebtElement.textContent = `$${totalDebt.toFixed(2)}`;
+    } else {
+        totalDebtElement.textContent = '******';
+    }
+    
+    // Store the value for toggle functionality
+    window.totalDebtValue = totalDebt;
+}
+
+/**
+ * Toggle debt visibility
+ */
+function toggleDebtVisibility() {
+    isDebtVisible = !isDebtVisible;
+    updateTotalDebt();
+    
+    // Update eye icon (if exists)
+    const eyeIcon = document.getElementById('eyeIcon');
+    if (eyeIcon) {
+        // Simple toggle - you can enhance this with different SVG icons
+        eyeIcon.style.opacity = isDebtVisible ? '1' : '0.5';
+    }
+}
+
+// ====================================
+// SEARCH AND SORT
+// ====================================
+
+/**
+ * Filter customers based on search query
+ * @param {string} query - Search query
+ */
+function filterCustomers(query) {
+    if (!query || query.trim() === '') {
+        renderCustomerList(allCustomers);
+        return;
+    }
+    
+    const lowerQuery = query.toLowerCase().trim();
+    const filtered = allCustomers.filter(customer => {
+        const name = (customer.name || '').toLowerCase();
+        const phone = (customer.phone || '').toLowerCase();
+        return name.includes(lowerQuery) || phone.includes(lowerQuery);
+    });
+    
+    renderCustomerList(filtered);
+}
+
+/**
+ * Sort customers based on selected option
+ * @param {string} sortOption - Sort option (name_asc, name_desc, balance_desc, balance_asc)
+ */
+function sortCustomers(sortOption) {
+    let sorted = [...allCustomers];
+    
+    switch (sortOption) {
+        case 'name_asc':
+            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            break;
+        case 'name_desc':
+            sorted.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+            break;
+        case 'balance_desc':
+            sorted.sort((a, b) => (b.balance || 0) - (a.balance || 0));
+            break;
+        case 'balance_asc':
+            sorted.sort((a, b) => (a.balance || 0) - (b.balance || 0));
+            break;
+    }
+    
+    renderCustomerList(sorted);
+}
+
+// ====================================
+// UTILITY FUNCTIONS
+// ====================================
+
+/**
+ * Escape HTML to prevent XSS
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped text
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Show toast notification
+ * @param {string} message - Message to display
+ * @param {string} type - Type: 'success', 'error', 'info'
+ */
+function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast toast--${type}`;
+    toast.innerHTML = `
+        <span class="toast__icon">${type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'}</span>
+        <span class="toast__message">${escapeHtml(message)}</span>
+        <button class="toast__close">&times;</button>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.add('toast--hiding');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+    
+    // Close button
+    toast.querySelector('.toast__close').addEventListener('click', () => {
+        toast.classList.add('toast--hiding');
+        setTimeout(() => toast.remove(), 300);
+    });
+}
+
+// ====================================
+// MODAL HANDLERS
+// ====================================
+
+/**
+ * Show modal
+ * @param {string} modalId - Modal element ID
+ */
+function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('modal--show');
+    }
+}
+
+/**
+ * Hide modal
+ * @param {string} modalId - Modal element ID
+ */
+function hideModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('modal--show');
+    }
+}
+
+/**
+ * Reset form
+ * @param {string} formId - Form element ID
+ */
+function resetForm(formId) {
+    const form = document.getElementById(formId);
+    if (form) {
+        form.reset();
+    }
+}
+
+// ====================================
+// EVENT LISTENERS SETUP
+// ====================================
+
+/**
+ * Initialize all event listeners
+ */
+function initializeEventListeners() {
+    // Add Customer Button
+    const addCustomerBtn = document.getElementById('addCustomerBtn');
+    if (addCustomerBtn) {
+        addCustomerBtn.addEventListener('click', () => {
+            showModal('addCustomerModal');
+        });
+    }
+    
+    // Add Customer Form
+    const addCustomerForm = document.getElementById('addCustomerForm');
+    if (addCustomerForm) {
+        addCustomerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('customerName').value.trim();
+            const phone = document.getElementById('customerPhone').value.trim();
+            const note = document.getElementById('customerNotes').value.trim();
+            
+            if (!name || !phone) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            try {
+                await addCustomer(name, phone, note);
+                hideModal('addCustomerModal');
+                resetForm('addCustomerForm');
+            } catch (error) {
+                // Error already handled in addCustomer function
+            }
+        });
+    }
+    
+    // Close Customer Modal
+    const closeCustomerModal = document.getElementById('closeCustomerModal');
+    const cancelCustomerBtn = document.getElementById('cancelCustomerBtn');
+    if (closeCustomerModal) {
+        closeCustomerModal.addEventListener('click', () => {
+            hideModal('addCustomerModal');
+            resetForm('addCustomerForm');
+        });
+    }
+    if (cancelCustomerBtn) {
+        cancelCustomerBtn.addEventListener('click', () => {
+            hideModal('addCustomerModal');
+            resetForm('addCustomerForm');
+        });
+    }
+    
+    // Add Debt Button
+    const addDebtBtn = document.getElementById('addDebtBtn');
+    if (addDebtBtn) {
+        addDebtBtn.addEventListener('click', () => {
+            if (!currentCustomerId) {
+                alert('Please select a customer first');
+                return;
+            }
+            showModal('addDebtModal');
+        });
+    }
+    
+    // Add Debt Form
+    const addDebtForm = document.getElementById('addDebtForm');
+    if (addDebtForm) {
+        addDebtForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentCustomerId) {
+                alert('No customer selected');
+                return;
+            }
+            
+            const amount = parseFloat(document.getElementById('debtAmount').value);
+            const note = document.getElementById('debtNote').value.trim();
+            
+            if (isNaN(amount) || amount <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+            
+            try {
+                await addDebt(currentCustomerId, amount, note);
+                hideModal('addDebtModal');
+                resetForm('addDebtForm');
+            } catch (error) {
+                // Error already handled in addDebt function
+            }
+        });
+    }
+    
+    // Close Debt Modal
+    const closeDebtModal = document.getElementById('closeDebtModal');
+    const cancelDebtBtn = document.getElementById('cancelDebtBtn');
+    if (closeDebtModal) {
+        closeDebtModal.addEventListener('click', () => {
+            hideModal('addDebtModal');
+            resetForm('addDebtForm');
+        });
+    }
+    if (cancelDebtBtn) {
+        cancelDebtBtn.addEventListener('click', () => {
+            hideModal('addDebtModal');
+            resetForm('addDebtForm');
+        });
+    }
+    
+    // Add Payment Button
+    const addPaymentBtn = document.getElementById('addPaymentBtn');
+    if (addPaymentBtn) {
+        addPaymentBtn.addEventListener('click', () => {
+            if (!currentCustomerId) {
+                alert('Please select a customer first');
+                return;
+            }
+            showModal('addPaymentModal');
+        });
+    }
+    
+    // Add Payment Form
+    const addPaymentForm = document.getElementById('addPaymentForm');
+    if (addPaymentForm) {
+        addPaymentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentCustomerId) {
+                alert('No customer selected');
+                return;
+            }
+            
+            const amount = parseFloat(document.getElementById('paymentAmount').value);
+            const note = document.getElementById('paymentNote').value.trim();
+            
+            if (isNaN(amount) || amount <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+            
+            try {
+                await addPayment(currentCustomerId, amount, note);
+                hideModal('addPaymentModal');
+                resetForm('addPaymentForm');
+            } catch (error) {
+                // Error already handled in addPayment function
+            }
+        });
+    }
+    
+    // Close Payment Modal
+    const closePaymentModal = document.getElementById('closePaymentModal');
+    const cancelPaymentBtn = document.getElementById('cancelPaymentBtn');
+    if (closePaymentModal) {
+        closePaymentModal.addEventListener('click', () => {
+            hideModal('addPaymentModal');
+            resetForm('addPaymentForm');
+        });
+    }
+    if (cancelPaymentBtn) {
+        cancelPaymentBtn.addEventListener('click', () => {
+            hideModal('addPaymentModal');
+            resetForm('addPaymentForm');
+        });
+    }
+    
+    // Search Input
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            filterCustomers(e.target.value);
+        });
+    }
+    
+    // Sort Select
+    const sortSelect = document.getElementById('sortSelect');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', (e) => {
+            sortCustomers(e.target.value);
+        });
+    }
+    
+    // Eye Toggle Button (Total Debt Visibility)
+    const eyeToggleBtn = document.getElementById('eyeToggleBtn');
+    if (eyeToggleBtn) {
+        eyeToggleBtn.addEventListener('click', () => {
+            toggleDebtVisibility();
+        });
+    }
+    
+    // Close modals when clicking outside
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('modal--show');
+            }
+        });
+    });
+}
+
+// ====================================
+// INITIALIZATION
+// ====================================
+
+/**
+ * Initialize the application
+ */
+async function initializeApp() {
+    // Set up event listeners
+    initializeEventListeners();
+    
+    // Load initial data
+    try {
+        await loadCustomers();
+    } catch (error) {
+        console.error('Failed to initialize app:', error);
+    }
+}
+
+// Start the app when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
+}
