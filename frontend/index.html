@@ -72,32 +72,61 @@
                 </div>
             </div>
 
-            <!-- Right Panel: Customer Details -->
+            <!-- Right Panel: Customer Details (Hidden by default, replaced by modal) -->
             <div id="detailsPanel" class="details-panel" style="display: none;">
-                <div class="details-content">
-                    <!-- Customer Info Section -->
-                    <div id="customerInfo" class="customer-info"></div>
-
-                    <!-- Transactions Section -->
-                    <div class="transactions">
-                        <h2 class="transactions__title">Transactions</h2>
-                        <div id="transactionsList" class="transactions__list"></div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="actions">
-                        <button id="addDebtBtn" class="btn btn--primary">Add Debt</button>
-                        <button id="addPaymentBtn" class="btn btn--secondary">Add Payment</button>
-                        <button id="closeBalanceBtn" class="btn btn--secondary">Close Balance</button>
-                        <button id="editCustomerBtn" class="btn btn--secondary">Edit Customer</button>
-                        <button id="deleteCustomerBtn" class="btn btn--danger">Delete Customer</button>
-                    </div>
-                </div>
+                <!-- Legacy container kept for JS compatibility if needed, but we will use modal -->
             </div>
 
             <!-- Placeholder when no customer selected -->
-            <div id="noSelectionPlaceholder" class="placeholder">
+            <div id="noSelectionPlaceholder" class="placeholder" style="display: none;">
                 <p>Select a customer to view details</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Details Modal (Fullscreen) -->
+    <div id="customerDetailsModal" class="modal modal--fullscreen">
+        <div class="modal__content modal__content--fullscreen">
+            <div class="modal__header">
+                <h2 class="modal__title" id="modalCustomerName">Customer Name</h2>
+                <div class="modal__actions">
+                    <!-- Three Dot Menu -->
+                    <div class="dropdown">
+                        <button class="btn-icon" id="customerMenuBtn">⋮</button>
+                        <div class="dropdown-content" id="customerMenuDropdown">
+                            <button id="addDebtBtn">Add Debt</button>
+                            <button id="addPaymentBtn">Add Payment</button>
+                            <button id="closeBalanceBtn">Close Balance</button>
+                            <button id="editCustomerBtn">Edit Customer</button>
+                            <button id="deleteCustomerBtn" class="text-danger">Delete Customer</button>
+                            <button id="viewHistoryBtn">View Full History</button>
+                        </div>
+                    </div>
+                    <button class="modal__close" id="closeCustomerDetailsModal" aria-label="Close">&times;</button>
+                </div>
+            </div>
+            <div class="modal__body">
+                <!-- Customer Info -->
+                <div id="modalCustomerInfo" class="customer-info-card"></div>
+                
+                <!-- Recent Transactions -->
+                <div class="transactions-preview">
+                    <h3>Recent Transactions</h3>
+                    <div id="modalTransactionsList" class="transactions__list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction History Modal (Fullscreen) -->
+    <div id="transactionHistoryModal" class="modal modal--fullscreen">
+        <div class="modal__content modal__content--fullscreen">
+            <div class="modal__header">
+                <h2 class="modal__title">Transaction History</h2>
+                <button class="modal__close" id="closeHistoryModal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal__body">
+                <div id="fullTransactionsList" class="transactions__list"></div>
             </div>
         </div>
     </div>

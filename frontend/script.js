@@ -238,15 +238,19 @@ async function loadCustomers() {
  * @param {string} customerId - The customer ID
  */
 async function loadCustomerDetails(customerId) {
-    const detailsPanel = document.getElementById('detailsPanel');
-    const noSelectionPlaceholder = document.getElementById('noSelectionPlaceholder');
-    const customerInfo = document.getElementById('customerInfo');
-    const transactionsList = document.getElementById('transactionsList');
+    // We now use the fullscreen modal instead of the details panel
+    const modal = document.getElementById('customerDetailsModal');
+    const modalCustomerName = document.getElementById('modalCustomerName');
+    const modalCustomerInfo = document.getElementById('modalCustomerInfo');
+    const modalTransactionsList = document.getElementById('modalTransactionsList');
     
     try {
-        // Show loading state
-        if (customerInfo) customerInfo.innerHTML = '<div class="loading">Loading customer details...</div>';
-        if (transactionsList) transactionsList.innerHTML = '';
+        // Show loading state in modal
+        if (modalCustomerInfo) modalCustomerInfo.innerHTML = '<div class="loading">Loading customer details...</div>';
+        if (modalTransactionsList) modalTransactionsList.innerHTML = '';
+        
+        // Open modal immediately
+        showModal('customerDetailsModal');
         
         const response = await fetch(`${BASE_URL}/api/getCustomer?id=${customerId}`);
         
@@ -258,23 +262,98 @@ async function loadCustomerDetails(customerId) {
         const customer = await response.json();
         currentCustomerId = customerId;
         
-        // Update UI
-        renderCustomerDetails(customer);
-        renderTransactions(customer.transactions || []);
+        // Update Modal Header
+        if (modalCustomerName) modalCustomerName.textContent = customer.name;
         
-        // Show details panel
-        if (detailsPanel) detailsPanel.style.display = 'flex';
-        if (noSelectionPlaceholder) noSelectionPlaceholder.style.display = 'none';
+        // Update Customer Info Card
+        renderCustomerInfoCard(customer);
         
-        // Update active customer in list
+        // Render Recent Transactions (Last 5)
+        renderRecentTransactions(customer.transactions || []);
+        
+        // Store full transactions for history view
+        window.currentCustomerTransactions = customer.transactions || [];
+        
+        // Update active customer in list (visual only)
         updateActiveCustomer(customerId);
         
     } catch (error) {
         console.error('Error loading customer details:', error);
         alert('Error loading customer details: ' + error.message);
-        
-        if (customerInfo) customerInfo.innerHTML = '<div class="error">Failed to load customer details</div>';
+        hideModal('customerDetailsModal');
     }
+}
+
+function renderCustomerInfoCard(customer) {
+    const modalCustomerInfo = document.getElementById('modalCustomerInfo');
+    if (!modalCustomerInfo) return;
+
+    const balance = customer.balance || 0;
+    const balanceClass = balance > 0 ? 'text-danger' : 'text-success';
+    
+    modalCustomerInfo.innerHTML = `
+        <h3>${escapeHtml(customer.name)}</h3>
+        <div class="stat-row">
+            <span class="stat-label">Phone</span>
+            <span class="stat-value">${escapeHtml(customer.phone || 'N/A')}</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Total Debt</span>
+            <span class="stat-value text-danger">$${(customer.totalDebt || 0).toFixed(2)}</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Total Paid</span>
+            <span class="stat-value text-success">$${(customer.totalPaid || 0).toFixed(2)}</span>
+        </div>
+        <div class="stat-row" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #eee;">
+            <span class="stat-label" style="font-weight: 700;">Current Balance</span>
+            <span class="stat-value ${balanceClass}" style="font-size: 1.4rem;">$${balance.toFixed(2)}</span>
+        </div>
+        ${customer.note ? `
+        <div style="margin-top: 16px; color: #666; font-size: 0.9rem;">
+            <strong>Notes:</strong><br>
+            ${escapeHtml(customer.note)}
+        </div>
+        ` : ''}
+    `;
+}
+
+function renderRecentTransactions(transactions) {
+    const list = document.getElementById('modalTransactionsList');
+    if (!list) return;
+    
+    if (!transactions || transactions.length === 0) {
+        list.innerHTML = '<p style="color: #999; text-align: center;">No recent transactions</p>';
+        return;
+    }
+    
+    // Sort by date desc
+    const sorted = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const recent = sorted.slice(0, 5);
+    
+    list.innerHTML = recent.map(t => createTransactionHTML(t)).join('');
+}
+
+function createTransactionHTML(transaction) {
+    const isDebt = ['debt', 'debit', 'DEBT'].includes(transaction.type);
+    const amount = Math.abs(transaction.amount || 0);
+    const date = new Date(transaction.date || transaction.createdAt);
+    const dateStr = date.toLocaleDateString();
+    
+    return `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee;">
+            <div>
+                <div style="font-weight: 600; color: ${isDebt ? '#e74c3c' : '#27ae60'}">
+                    ${isDebt ? 'Debt' : 'Payment'}
+                </div>
+                <div style="font-size: 0.85rem; color: #999;">${dateStr}</div>
+                ${transaction.note ? `<div style="font-size: 0.85rem; color: #666;">${escapeHtml(transaction.note)}</div>` : ''}
+            </div>
+            <div style="font-weight: 700; font-size: 1.1rem; color: ${isDebt ? '#e74c3c' : '#27ae60'}">
+                ${isDebt ? '+' : '-'}$${amount.toFixed(2)}
+            </div>
+        </div>
+    `;
 }
 
 /**
@@ -638,15 +717,15 @@ function renderCustomerDetails(customer) {
 }
 
 /**
- * Render transactions list
+ * Render full transactions history
  * @param {Array} transactions - Array of transaction objects
  */
-function renderTransactions(transactions) {
-    const transactionsList = document.getElementById('transactionsList');
-    if (!transactionsList) return;
+function renderFullTransactionHistory(transactions) {
+    const list = document.getElementById('fullTransactionsList');
+    if (!list) return;
     
     if (!transactions || transactions.length === 0) {
-        transactionsList.innerHTML = '<div class="empty-message">No transactions found</div>';
+        list.innerHTML = '<div class="empty-message">No transactions found</div>';
         return;
     }
     
@@ -655,8 +734,8 @@ function renderTransactions(transactions) {
         return new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0);
     });
     
-    transactionsList.innerHTML = sortedTransactions.map(transaction => {
-        const isDebt = transaction.type === 'debt' || transaction.amount < 0;
+    list.innerHTML = sortedTransactions.map(transaction => {
+        const isDebt = ['debt', 'debit', 'DEBT'].includes(transaction.type) || (transaction.amount < 0 && transaction.type !== 'payment');
         const amount = Math.abs(transaction.amount || 0);
         const date = new Date(transaction.date || transaction.createdAt || Date.now());
         const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -865,7 +944,55 @@ function resetForm(formId) {
  * Initialize all event listeners
  */
 function initializeEventListeners() {
-    // Add Customer Button
+    // --- Customer Details Modal & Dropdown ---
+    
+    // Close Customer Details Modal
+    const closeCustomerDetailsModal = document.getElementById('closeCustomerDetailsModal');
+    if (closeCustomerDetailsModal) {
+        closeCustomerDetailsModal.addEventListener('click', () => {
+            hideModal('customerDetailsModal');
+        });
+    }
+
+    // Customer Menu Dropdown Toggle
+    const customerMenuBtn = document.getElementById('customerMenuBtn');
+    const customerMenuDropdown = document.getElementById('customerMenuDropdown');
+    
+    if (customerMenuBtn && customerMenuDropdown) {
+        customerMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            customerMenuDropdown.classList.toggle('show');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!customerMenuBtn.contains(e.target) && !customerMenuDropdown.contains(e.target)) {
+                customerMenuDropdown.classList.remove('show');
+            }
+        });
+    }
+
+    // View Full History Button
+    const viewHistoryBtn = document.getElementById('viewHistoryBtn');
+    if (viewHistoryBtn) {
+        viewHistoryBtn.addEventListener('click', () => {
+            renderFullTransactionHistory(window.currentCustomerTransactions || []);
+            showModal('transactionHistoryModal');
+            if (customerMenuDropdown) customerMenuDropdown.classList.remove('show');
+        });
+    }
+
+    // Close History Modal
+    const closeHistoryModal = document.getElementById('closeHistoryModal');
+    if (closeHistoryModal) {
+        closeHistoryModal.addEventListener('click', () => {
+            hideModal('transactionHistoryModal');
+        });
+    }
+
+    // --- Main Actions ---
+
+    // Add Customer Button (FAB)
     const addCustomerBtn = document.getElementById('addCustomerBtn');
     if (addCustomerBtn) {
         addCustomerBtn.addEventListener('click', () => {
@@ -913,7 +1040,7 @@ function initializeEventListeners() {
         });
     }
     
-    // Add Debt Button
+    // Add Debt Button (From Dropdown)
     const addDebtBtn = document.getElementById('addDebtBtn');
     if (addDebtBtn) {
         addDebtBtn.addEventListener('click', () => {
@@ -922,6 +1049,7 @@ function initializeEventListeners() {
                 return;
             }
             showModal('addDebtModal');
+            if (customerMenuDropdown) customerMenuDropdown.classList.remove('show');
         });
     }
     
@@ -970,17 +1098,6 @@ function initializeEventListeners() {
             }
         });
     }
-
-    // Google Drive Picker Button (Legacy - Removed from HTML but keeping logic clean)
-    /*
-    const selectDriveFileBtn = document.getElementById('btn-pick-invoice');
-    if (selectDriveFileBtn) {
-        selectDriveFileBtn.addEventListener('click', (e) => {
-            e.preventDefault(); // Prevent form submission if inside a form
-            handleAuthClick();
-        });
-    }
-    */
     
     // Close Debt Modal
     const closeDebtModal = document.getElementById('closeDebtModal');
@@ -998,7 +1115,7 @@ function initializeEventListeners() {
         });
     }
     
-    // Add Payment Button
+    // Add Payment Button (From Dropdown)
     const addPaymentBtn = document.getElementById('addPaymentBtn');
     if (addPaymentBtn) {
         addPaymentBtn.addEventListener('click', () => {
@@ -1007,6 +1124,7 @@ function initializeEventListeners() {
                 return;
             }
             showModal('addPaymentModal');
+            if (customerMenuDropdown) customerMenuDropdown.classList.remove('show');
         });
     }
     
@@ -1060,7 +1178,6 @@ function initializeEventListeners() {
         btnPickDrive.addEventListener('click', (e) => {
             e.preventDefault();
             handleAuthClick();
-            // Hide options after selection (optional, but maybe better to keep open until done)
         });
     }
 
@@ -1108,7 +1225,7 @@ function initializeEventListeners() {
         });
     }
 
-    // Edit Customer Button
+    // Edit Customer Button (From Dropdown)
     const editCustomerBtn = document.getElementById('editCustomerBtn');
     if (editCustomerBtn) {
         editCustomerBtn.addEventListener('click', () => {
@@ -1126,6 +1243,7 @@ function initializeEventListeners() {
             document.getElementById('editCustomerNotes').value = customer.note || '';
             
             showModal('editCustomerModal');
+            if (customerMenuDropdown) customerMenuDropdown.classList.remove('show');
         });
     }
     
@@ -1168,7 +1286,7 @@ function initializeEventListeners() {
         });
     }
     
-    // Delete Customer Button
+    // Delete Customer Button (From Dropdown)
     const deleteCustomerBtn = document.getElementById('deleteCustomerBtn');
     if (deleteCustomerBtn) {
         deleteCustomerBtn.addEventListener('click', () => {
@@ -1177,10 +1295,12 @@ function initializeEventListeners() {
                 return;
             }
             deleteCustomer(currentCustomerId);
+            if (customerMenuDropdown) customerMenuDropdown.classList.remove('show');
+            hideModal('customerDetailsModal'); // Close details modal after delete
         });
     }
     
-    // Close Balance Button
+    // Close Balance Button (From Dropdown)
     const closeBalanceBtn = document.getElementById('closeBalanceBtn');
     if (closeBalanceBtn) {
         closeBalanceBtn.addEventListener('click', () => {
@@ -1189,6 +1309,7 @@ function initializeEventListeners() {
                 return;
             }
             closeBalance(currentCustomerId);
+            if (customerMenuDropdown) customerMenuDropdown.classList.remove('show');
         });
     }
     
