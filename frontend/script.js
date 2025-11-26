@@ -35,25 +35,8 @@ function onPickerApiLoad() {
 }
 
 // Initialize the Identity Client
-// We can do this immediately since the script is loaded
-try {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: SCOPES,
-        callback: (response) => {
-            if (response.error !== undefined) {
-                throw (response);
-            }
-            accessToken = response.access_token;
-            openPicker();
-        },
-    });
-} catch (e) {
-    // If google is not defined yet, we might need to wait or check script loading order
-    // But usually with async defer it might be racey. 
-    // Ideally we wait for window.onload or similar if 'google' is not ready.
-    console.log("Google Identity Services not loaded yet, waiting...");
-    window.onload = function() {
+function initializeGoogleAuth() {
+    try {
         tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: GOOGLE_CLIENT_ID,
             scope: SCOPES,
@@ -62,22 +45,53 @@ try {
                     throw (response);
                 }
                 accessToken = response.access_token;
-                openPicker();
+                updateConnectButtonState(true);
+                showToast('Google Drive Connected!', 'success');
             },
         });
+    } catch (e) {
+        console.log("Google Identity Services not loaded yet, waiting...");
+        setTimeout(initializeGoogleAuth, 500);
     }
 }
 
-function handleAuthClick() {
+// Call initialization
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeGoogleAuth);
+} else {
+    initializeGoogleAuth();
+}
+
+function handleConnectClick() {
     if (accessToken) {
-        openPicker();
-    } else {
-        // Request authorization
-        tokenClient.requestAccessToken({prompt: ''});
+        showToast('Already connected to Google Drive', 'info');
+        return;
+    }
+    // Request authorization
+    tokenClient.requestAccessToken({prompt: ''});
+}
+
+function updateConnectButtonState(isConnected) {
+    const btn = document.getElementById('connectDriveBtn');
+    if (btn) {
+        if (isConnected) {
+            btn.textContent = 'Drive Connected';
+            btn.classList.remove('btn--secondary');
+            btn.classList.add('btn--success'); // You might need to define this class or use inline style
+            btn.style.backgroundColor = '#28a745';
+            btn.style.color = 'white';
+        } else {
+            btn.textContent = 'Connect Drive';
+        }
     }
 }
 
 function openPicker() {
+    if (!accessToken) {
+        alert("Please connect to Google Drive first (Top Right Button)");
+        return;
+    }
+    
     if (!pickerInited) {
         alert("Google Picker API not loaded yet. Please refresh.");
         return;
@@ -108,6 +122,64 @@ function pickerCallback(data) {
             statusText.textContent = `Selected: ${fileName}`;
             statusText.style.color = "green";
         }
+    }
+}
+
+/**
+ * Upload file directly to Google Drive using API
+ * @param {File} file 
+ */
+async function uploadFileToDrive(file) {
+    if (!accessToken) {
+        alert("Please connect to Google Drive first");
+        return;
+    }
+
+    const statusText = document.getElementById('picker-status-text');
+    if (statusText) {
+        statusText.textContent = 'Uploading image...';
+        statusText.style.color = 'blue';
+    }
+
+    const metadata = {
+        'name': file.name,
+        'parents': [GOOGLE_DRIVE_FOLDER_ID]
+    };
+
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', file);
+
+    try {
+        const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + accessToken
+            },
+            body: form
+        });
+
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+
+        const data = await response.json();
+        const fileId = data.id;
+        
+        selectedInvoiceUrl = `https://drive.google.com/uc?id=${fileId}`;
+        
+        if (statusText) {
+            statusText.textContent = `Uploaded: ${file.name}`;
+            statusText.style.color = "green";
+        }
+        
+    } catch (error) {
+        console.error('Drive upload error:', error);
+        if (statusText) {
+            statusText.textContent = 'Upload failed. Try again.';
+            statusText.style.color = 'red';
+        }
+        alert('Failed to upload to Google Drive: ' + error.message);
     }
 }
 
@@ -929,6 +1001,28 @@ function initializeEventListeners() {
         });
     }
     
+    // Connect Drive Button
+    const connectDriveBtn = document.getElementById('connectDriveBtn');
+    if (connectDriveBtn) {
+        connectDriveBtn.addEventListener('click', handleConnectClick);
+    }
+
+    // Camera Button
+    const btnCameraInvoice = document.getElementById('btn-camera-invoice');
+    const cameraInput = document.getElementById('cameraInput');
+    
+    if (btnCameraInvoice && cameraInput) {
+        btnCameraInvoice.addEventListener('click', () => {
+            cameraInput.click();
+        });
+        
+        cameraInput.addEventListener('change', async (e) => {
+            if (e.target.files && e.target.files[0]) {
+                await uploadFileToDrive(e.target.files[0]);
+            }
+        });
+    }
+
     // Add Payment Form
     const addPaymentForm = document.getElementById('addPaymentForm');
     if (addPaymentForm) {
