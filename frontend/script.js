@@ -7,10 +7,108 @@
 // Backend API Base URL
 const BASE_URL = "https://dept-system.onrender.com"; // Production Backend
 
+// --- GOOGLE PICKER CONFIGURATION ---
+const GOOGLE_CLIENT_ID = "780794685039-gbqdfps9jk1hjv88r3qc1dhp08flks52.apps.googleusercontent.com";
+const GOOGLE_DRIVE_FOLDER_ID = "1eBdacCCyxqNb045b7tDHx6ei5DYBVbiI";
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+let tokenClient;
+let accessToken = null;
+let pickerInited = false;
+let selectedInvoiceUrl = null;
+
 // Global state
 let allCustomers = [];
 let currentCustomerId = null;
 let isDebtVisible = true;
+
+// ====================================
+// GOOGLE PICKER LOGIC
+// ====================================
+
+// Load the Picker API
+gapi.load('picker', onPickerApiLoad);
+
+function onPickerApiLoad() {
+    pickerInited = true;
+}
+
+// Initialize the Identity Client
+// We can do this immediately since the script is loaded
+try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: SCOPES,
+        callback: (response) => {
+            if (response.error !== undefined) {
+                throw (response);
+            }
+            accessToken = response.access_token;
+            openPicker();
+        },
+    });
+} catch (e) {
+    // If google is not defined yet, we might need to wait or check script loading order
+    // But usually with async defer it might be racey. 
+    // Ideally we wait for window.onload or similar if 'google' is not ready.
+    console.log("Google Identity Services not loaded yet, waiting...");
+    window.onload = function() {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: SCOPES,
+            callback: (response) => {
+                if (response.error !== undefined) {
+                    throw (response);
+                }
+                accessToken = response.access_token;
+                openPicker();
+            },
+        });
+    }
+}
+
+function handleAuthClick() {
+    if (accessToken) {
+        openPicker();
+    } else {
+        // Request authorization
+        tokenClient.requestAccessToken({prompt: ''});
+    }
+}
+
+function openPicker() {
+    if (!pickerInited) {
+        alert("Google Picker API not loaded yet. Please refresh.");
+        return;
+    }
+    
+    const view = new google.picker.DocsUploadView();
+    view.setParent(GOOGLE_DRIVE_FOLDER_ID);
+
+    const picker = new google.picker.PickerBuilder()
+        .setOAuthToken(accessToken)
+        .addView(view)
+        .setCallback(pickerCallback)
+        .build();
+    
+    picker.setVisible(true);
+}
+
+function pickerCallback(data) {
+    if (data[google.picker.Response.ACTION] == google.picker.Action.PICKED) {
+        const doc = data[google.picker.Response.DOCUMENTS][0];
+        const fileId = doc[google.picker.Document.ID];
+        const fileName = doc[google.picker.Document.NAME];
+        
+        selectedInvoiceUrl = `https://drive.google.com/uc?id=${fileId}`;
+        
+        const statusText = document.getElementById('picker-status-text');
+        if (statusText) {
+            statusText.textContent = `Selected: ${fileName}`;
+            statusText.style.color = "green";
+        }
+    }
+}
 
 // ====================================
 // API FUNCTIONS
@@ -766,50 +864,39 @@ function initializeEventListeners() {
             
             const amount = parseFloat(document.getElementById('debtAmount').value);
             const note = document.getElementById('debtNote').value.trim();
-            const imageFile = document.getElementById('debtImage').files[0];
             
             if (isNaN(amount) || amount <= 0) {
                 alert('Please enter a valid amount');
                 return;
             }
 
-            let invoiceImageUrl = null;
-
-            // Upload image if selected
-            if (imageFile) {
-                const formData = new FormData();
-                formData.append('image', imageFile);
-
-                try {
-                    // Show uploading toast
-                    showToast('Uploading image...', 'info');
-                    
-                    const uploadResponse = await fetch(`${BASE_URL}/api/uploadImage`, {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (!uploadResponse.ok) {
-                        const errorData = await uploadResponse.json().catch(() => ({}));
-                        throw new Error(errorData.error || 'Failed to upload image');
-                    }
-
-                    const uploadResult = await uploadResponse.json();
-                    invoiceImageUrl = uploadResult.fileUrl;
-                } catch (error) {
-                    console.error('Image upload error:', error);
-                    alert('Failed to upload image: ' + error.message);
-                    return;
-                }
-            }
+            // Use the selected Google Drive file URL
+            const invoiceImageUrl = selectedInvoiceUrl;
             
             try {
                 await addDebt(currentCustomerId, amount, note, invoiceImageUrl);
                 hideModal('addDebtModal');
                 resetForm('addDebtForm');
+                
+                // Reset the selected file
+                selectedInvoiceUrl = null;
+                const fileStatus = document.getElementById('picker-status-text');
+                if (fileStatus) {
+                    fileStatus.textContent = '';
+                    fileStatus.style.color = '#666';
+                }
             } catch (error) {
                 // Error already handled in addDebt function
             }
+        });
+    }
+
+    // Google Drive Picker Button
+    const selectDriveFileBtn = document.getElementById('btn-pick-invoice');
+    if (selectDriveFileBtn) {
+        selectDriveFileBtn.addEventListener('click', (e) => {
+            e.preventDefault(); // Prevent form submission if inside a form
+            handleAuthClick();
         });
     }
     

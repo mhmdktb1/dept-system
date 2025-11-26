@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chocair Fresh – Debt Manager</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Google API Scripts -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
     <!-- Toast Notification Container -->
@@ -226,15 +229,11 @@
                     ></textarea>
                 </div>
                 <div class="form-group">
-                    <label for="debtImage" class="form-group__label">Invoice Image (Optional)</label>
-                    <input 
-                        type="file" 
-                        id="debtImage" 
-                        name="image" 
-                        class="form-group__input"
-                        accept="image/*"
-                    >
-                    <small class="form-group__hint">Upload an image of the invoice or receipt</small>
+                    <label class="form-group__label">Invoice Image (Optional)</label>
+                    <button type="button" id="btn-pick-invoice" class="btn btn--secondary btn--small" style="width: 100%; margin-bottom: 10px;">
+                        Select from Google Drive
+                    </button>
+                    <p id="picker-status-text" style="font-size: 13px; color: #666; margin-top: 5px;"></p>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn--secondary" id="cancelDebtBtn">Cancel</button>
