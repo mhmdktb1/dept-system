@@ -231,15 +231,25 @@
                 </div>
                 <div class="form-group">
                     <label class="form-group__label">Invoice Image (Optional)</label>
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                        <button type="button" id="btn-pick-invoice" class="btn btn--secondary btn--small" style="flex: 1;">
-                            Select from Drive
+                    
+                    <!-- Main Add Button -->
+                    <button type="button" id="btn-show-invoice-options" class="btn btn--secondary btn--small" style="width: 100%; margin-bottom: 10px;">
+                        Add Invoice Image
+                    </button>
+
+                    <!-- Options (Hidden by default) -->
+                    <div id="invoice-options" style="display: none; gap: 10px; margin-bottom: 10px;">
+                        <button type="button" id="btn-upload-device" class="btn btn--secondary btn--small" style="flex: 1; background-color: #f0f0f0; color: #333;">
+                            Camera / Device
                         </button>
-                        <button type="button" id="btn-camera-invoice" class="btn btn--secondary btn--small" style="flex: 1;">
-                            Use Camera
+                        <button type="button" id="btn-pick-drive" class="btn btn--secondary btn--small" style="flex: 1; background-color: #f0f0f0; color: #333;">
+                            Google Drive
                         </button>
-                        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
                     </div>
+
+                    <!-- Hidden File Input (No capture attribute to allow choice) -->
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                    
                     <p id="picker-status-text" style="font-size: 13px; color: #666; margin-top: 5px;"></p>
                 </div>
                 <div class="form-actions">

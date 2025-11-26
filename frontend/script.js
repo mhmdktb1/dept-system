@@ -958,13 +958,21 @@ function initializeEventListeners() {
                     fileStatus.textContent = '';
                     fileStatus.style.color = '#666';
                 }
+                
+                // Reset Options UI
+                const invoiceOptions = document.getElementById('invoice-options');
+                const btnShowInvoiceOptions = document.getElementById('btn-show-invoice-options');
+                if (invoiceOptions) invoiceOptions.style.display = 'none';
+                if (btnShowInvoiceOptions) btnShowInvoiceOptions.textContent = 'Add Invoice Image';
+                
             } catch (error) {
                 // Error already handled in addDebt function
             }
         });
     }
 
-    // Google Drive Picker Button
+    // Google Drive Picker Button (Legacy - Removed from HTML but keeping logic clean)
+    /*
     const selectDriveFileBtn = document.getElementById('btn-pick-invoice');
     if (selectDriveFileBtn) {
         selectDriveFileBtn.addEventListener('click', (e) => {
@@ -972,6 +980,7 @@ function initializeEventListeners() {
             handleAuthClick();
         });
     }
+    */
     
     // Close Debt Modal
     const closeDebtModal = document.getElementById('closeDebtModal');
@@ -1007,19 +1016,51 @@ function initializeEventListeners() {
         connectDriveBtn.addEventListener('click', handleConnectClick);
     }
 
-    // Camera Button
-    const btnCameraInvoice = document.getElementById('btn-camera-invoice');
-    const cameraInput = document.getElementById('cameraInput');
+    // Invoice Options Toggle
+    const btnShowInvoiceOptions = document.getElementById('btn-show-invoice-options');
+    const invoiceOptions = document.getElementById('invoice-options');
     
-    if (btnCameraInvoice && cameraInput) {
-        btnCameraInvoice.addEventListener('click', () => {
-            cameraInput.click();
+    if (btnShowInvoiceOptions && invoiceOptions) {
+        btnShowInvoiceOptions.addEventListener('click', () => {
+            // Toggle visibility
+            if (invoiceOptions.style.display === 'none') {
+                invoiceOptions.style.display = 'flex';
+                btnShowInvoiceOptions.textContent = 'Hide Options';
+            } else {
+                invoiceOptions.style.display = 'none';
+                btnShowInvoiceOptions.textContent = 'Add Invoice Image';
+            }
+        });
+    }
+
+    // Upload from Device/Camera Button
+    const btnUploadDevice = document.getElementById('btn-upload-device');
+    const fileInput = document.getElementById('fileInput');
+    
+    if (btnUploadDevice && fileInput) {
+        btnUploadDevice.addEventListener('click', () => {
+            fileInput.click();
         });
         
-        cameraInput.addEventListener('change', async (e) => {
+        fileInput.addEventListener('change', async (e) => {
             if (e.target.files && e.target.files[0]) {
                 await uploadFileToDrive(e.target.files[0]);
+                // Hide options after selection
+                if (invoiceOptions) {
+                    invoiceOptions.style.display = 'none';
+                    if (btnShowInvoiceOptions) btnShowInvoiceOptions.textContent = 'Change Invoice Image';
+                }
             }
+        });
+    }
+
+    // Pick from Drive Button
+    const btnPickDrive = document.getElementById('btn-pick-drive');
+    if (btnPickDrive) {
+        btnPickDrive.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleAuthClick();
+            // Hide options after selection (optional, but maybe better to keep open until done)
         });
     }
 
