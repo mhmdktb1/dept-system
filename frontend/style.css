@@ -344,7 +344,7 @@ textarea {
   color: var(--color-danger);
 }
 
-.dropdown.show .dropdown-content {
+.dropdown-content.show {
   display: block;
 }
 
@@ -736,6 +736,10 @@ textarea {
   align-items: center;
   justify-content: center;
   padding: 16px;
+}
+
+.modal.modal--show {
+  display: flex;
 }
 
 .modal__content {
