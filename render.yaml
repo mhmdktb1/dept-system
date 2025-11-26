@@ -1,20 +1,12 @@
 services:
-  - type: web
-    name: chocair-fresh-backend
-    env: node
-    root: backend
-    buildCommand: npm install
-    startCommand: npm start
-    envVars:
-      - key: MONGO_URI
-        sync: false
-      - key: PORT
-        value: 10000
-
   - type: static
-    name: chocair-fresh-frontend
-    env: static
-    root: .
+    name: dept-system-frontend
+    rootDir: frontend
     buildCommand: ""
-    staticPublishPath: frontend
+    publishDir: "."
 
+  - type: web
+    name: dept-system-backend
+    rootDir: backend
+    buildCommand: "npm install"
+    startCommand: "node server.js"
