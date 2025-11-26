@@ -54,8 +54,11 @@ router.get('/', async (req, res) => {
         }
 
         // Fetch all transactions for this customer
+        // Query for both string ID and ObjectId to handle legacy/mixed data
         const transactions = await db.collection('transactions')
-            .find({ customerId: customerId })
+            .find({ 
+                customerId: { $in: [customerId, objectId] } 
+            })
             .sort({ date: -1, createdAt: -1 }) // Sort by date, then createdAt if date is same
             .toArray();
 
@@ -63,9 +66,7 @@ router.get('/', async (req, res) => {
         const mappedTransactions = transactions.map((transaction) => {
             return {
                 id: transaction._id.toString(),
-                type: transaction.type === 'DEBT' || transaction.type === 'debit' 
-                    ? 'debit' 
-                    : 'credit',
+                type: ['debit', 'debt', 'DEBT'].includes(transaction.type) ? 'debit' : 'credit',
                 amount: transaction.amount || 0,
                 note: transaction.note || '',
                 invoiceImageUrl: transaction.invoiceImageUrl || transaction.invoiceUrl || null,
@@ -79,13 +80,14 @@ router.get('/', async (req, res) => {
 
         transactions.forEach((transaction) => {
             const amount = transaction.amount || 0;
+            const type = (transaction.type || '').toLowerCase();
 
             // Sum debits (money owed to the store)
-            if (transaction.type === 'debit' || transaction.type === 'DEBT') {
+            if (type === 'debit' || type === 'debt') {
                 totalDebt += amount;
             }
             // Sum credits (payments made by customer)
-            else if (transaction.type === 'credit' || transaction.type === 'PAYMENT') {
+            else if (type === 'credit' || type === 'payment') {
                 totalPaid += amount;
             }
         });
