@@ -14,7 +14,7 @@ services:
   - type: static
     name: chocair-fresh-frontend
     env: static
-    root: frontend
+    root: .
     buildCommand: ""
-    staticPublishPath: ./
+    staticPublishPath: frontend
 
