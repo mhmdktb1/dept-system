@@ -5,7 +5,8 @@
    ==================================== */
 
 // Backend API Base URL
-const BASE_URL = "https://dept-system.onrender.com"; // Production Backend
+// const BASE_URL = "https://dept-system.onrender.com"; // Old Backend URL
+const BASE_URL = "https://chocair-fresh-backend.onrender.com"; // New Render Service Name
 
 // --- GOOGLE PICKER CONFIGURATION ---
 const GOOGLE_CLIENT_ID = "780794685039-gbqdfps9jk1hjv88r3qc1dhp08flks52.apps.googleusercontent.com";
@@ -1104,6 +1105,20 @@ function initializeEventListeners() {
  * Initialize the application
  */
 async function initializeApp() {
+    // Check Backend Health
+    try {
+        const healthCheck = await fetch(`${BASE_URL}/health`);
+        if (!healthCheck.ok) {
+            console.warn('Backend health check failed');
+            showToast('Warning: Backend might be down', 'error');
+        } else {
+            console.log('Backend is online');
+        }
+    } catch (e) {
+        console.error('Backend unreachable:', e);
+        showToast('Error: Cannot connect to server. Please wait for it to wake up.', 'error');
+    }
+
     // Set up event listeners
     initializeEventListeners();
     
