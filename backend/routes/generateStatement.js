@@ -2,6 +2,7 @@ import { getDb } from '../db.js';
 import { ObjectId } from 'mongodb';
 import express from 'express';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import fetch from 'node-fetch';
 
 const router = express.Router();
 
@@ -53,7 +54,7 @@ router.get('/', async (req, res) => {
         y -= 15;
         page.drawText(`Phone: ${customer.phone || 'N/A'}`, { x: margin, y, size: 12, font });
         y -= 15;
-        page.drawText(`Date: ${new Date().toLocaleDateString()}`, { x: margin, y, size: 12, font });
+        page.drawText(`Date: ${new Date().toISOString().split('T')[0]}`, { x: margin, y, size: 12, font });
         y -= 30;
 
         // Table Header
@@ -72,8 +73,8 @@ router.get('/', async (req, res) => {
 
         // Transactions
         for (const t of transactions) {
-            // Check if we need a new page (approximate check)
-            if (y < margin + 50) {
+            // Check if we need a new page
+            if (y < margin + 120) {
                 page = pdfDoc.addPage();
                 y = height - margin;
             }
@@ -98,42 +99,27 @@ router.get('/', async (req, res) => {
             let rowHeight = 20;
             if (t.invoiceImageUrl) {
                 try {
-                    const imgRes = await fetch(t.invoiceImageUrl);
-                    if (imgRes.ok) {
-                        const imgBytes = await imgRes.arrayBuffer();
-                        let image;
-                        // Try embedding as JPG first, then PNG
-                        try {
-                            image = await pdfDoc.embedJpg(imgBytes);
-                        } catch (e) {
-                            image = await pdfDoc.embedPng(imgBytes);
-                        }
+                    const response = await fetch(t.invoiceImageUrl);
+                    if (!response.ok) throw new Error("Image fetch failed");
+                    const imgBuffer = await response.arrayBuffer();
 
-                        // Scale to fit 80x80
-                        const dims = image.scaleToFit(80, 80);
-                        
-                        // Check if image fits on page
-                        if (y - dims.height < margin) {
-                            page = pdfDoc.addPage();
-                            y = height - margin;
-                            // Redraw text on new page? Ideally yes, but for simplicity we just push the image to next page 
-                            // and leave text on previous. Or we move everything. 
-                            // To keep it simple: we already checked for 50px space. 
-                            // If image is 80px, we might overflow. 
-                            // Let's just draw it. If it clips, it clips. 
-                            // Or better: check space before drawing anything for this row.
-                        }
-
-                        page.drawImage(image, {
-                            x: colX[4],
-                            y: y - dims.height + 8, 
-                            width: dims.width,
-                            height: dims.height,
-                        });
-                        rowHeight = Math.max(20, dims.height + 10);
-                    } else {
-                        page.drawText('Load Err', { x: colX[4], y, size: 10, font, color: rgb(1, 0, 0) });
+                    let image;
+                    try {
+                        image = await pdfDoc.embedJpg(imgBuffer);
+                    } catch (e) {
+                        image = await pdfDoc.embedPng(imgBuffer);
                     }
+
+                    // Scale to fit 80x80
+                    const dims = image.scaleToFit(80, 80);
+                    
+                    page.drawImage(image, {
+                        x: colX[4],
+                        y: y - dims.height + 8, 
+                        width: dims.width,
+                        height: dims.height,
+                    });
+                    rowHeight = Math.max(20, dims.height + 10);
                 } catch (e) {
                     // console.error('Error embedding image:', e);
                     page.drawText('N/A', { x: colX[4], y, size: 10, font, color: rgb(0.6, 0.6, 0.6) });
