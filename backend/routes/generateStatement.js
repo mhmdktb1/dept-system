@@ -50,8 +50,6 @@ router.get('/', async (req, res) => {
         y -= 30;
 
         // Customer Info
-        page.drawText(`Name: ${customer.name}`, { x: margin, y, size: 12, font });
-        y -= 15;
         page.drawText(`Phone: ${customer.phone || 'N/A'}`, { x: margin, y, size: 12, font });
         y -= 15;
         page.drawText(`Date: ${new Date().toISOString().split('T')[0]}`, { x: margin, y, size: 12, font });
