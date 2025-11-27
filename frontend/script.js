@@ -370,8 +370,9 @@ function createTransactionHTML(transaction) {
  * @param {string} name - Customer name
  * @param {string} phone - Customer phone number
  * @param {string} note - Optional notes
+ * @param {number} initialDebt - Optional initial debt amount
  */
-async function addCustomer(name, phone, note) {
+async function addCustomer(name, phone, note, initialDebt = 0) {
     try {
         const response = await fetch(`${BASE_URL}/api/addCustomer`, {
             method: 'POST',
@@ -392,6 +393,16 @@ async function addCustomer(name, phone, note) {
 
         const result = await response.json();
         
+        // If initial debt is provided, add it immediately
+        if (initialDebt > 0 && result.customerId) {
+            try {
+                await addDebt(result.customerId, initialDebt, 'Initial Debt', null);
+            } catch (debtError) {
+                console.error('Error adding initial debt:', debtError);
+                showToast(translate('errorAddingDebt'), 'error');
+            }
+        }
+
         // Reload customer list
         await loadCustomers();
         
@@ -645,7 +656,6 @@ function renderCustomerList(customers) {
                 <div class="customer-card__content">
                     <h3 class="customer-card__name">${escapeHtml(customer.name || translate('unknown'))}</h3>
                     <div class="customer-card__info">
-                        <span class="customer-card__item">${translate('phone')}: ${escapeHtml(customer.phone || 'N/A')}</span>
                         <span class="customer-card__balance ${balanceClass}">${translate('balance')}: ${balanceText}</span>
                     </div>
                 </div>
@@ -1047,14 +1057,16 @@ function initializeEventListeners() {
             const name = document.getElementById('customerName').value.trim();
             const phone = document.getElementById('customerPhone').value.trim();
             const note = document.getElementById('customerNotes').value.trim();
+            const initialDebtInput = document.getElementById('initialDebt');
+            const initialDebt = initialDebtInput ? parseFloat(initialDebtInput.value) : 0;
             
-            if (!name || !phone) {
+            if (!name) {
                 alert(translate('fillRequiredFields'));
                 return;
             }
             
             try {
-                await addCustomer(name, phone, note);
+                await addCustomer(name, phone, note, initialDebt);
                 hideModal('addCustomerModal');
                 resetForm('addCustomerForm');
             } catch (error) {

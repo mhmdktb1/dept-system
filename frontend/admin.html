@@ -161,15 +161,26 @@
                     >
                 </div>
                 <div class="form-group">
-                    <label for="customerPhone" class="form-group__label" data-i18n="phoneNumber">Phone Number *</label>
+                    <label for="customerPhone" class="form-group__label" data-i18n="phoneNumber">Phone Number</label>
                     <input 
                         type="tel" 
                         id="customerPhone" 
                         name="phone" 
                         class="form-group__input"
-                        required
                         data-i18n="enterPhone"
                         placeholder="Enter phone number"
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="initialDebt" class="form-group__label" data-i18n="initialDebt">Initial Debt (Optional)</label>
+                    <input 
+                        type="number" 
+                        id="initialDebt" 
+                        name="initialDebt" 
+                        class="form-group__input"
+                        step="0.01" 
+                        min="0"
+                        placeholder="0.00"
                     >
                 </div>
                 <div class="form-group">

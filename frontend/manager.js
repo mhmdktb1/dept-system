@@ -100,7 +100,6 @@ function renderCustomers(customers) {
             <div class="customer-list-item">
                 <div class="customer-details">
                     <h3>${escapeHtml(c.name)}</h3>
-                    <p>${escapeHtml(c.phone || translate('noPhone'))}</p>
                 </div>
                 <div style="display: flex; align-items: center;">
                     <div class="customer-balance">
