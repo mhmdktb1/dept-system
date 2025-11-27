@@ -8,6 +8,7 @@ if (role !== "manager") {
 
 const BASE_URL = "https://dept-system.onrender.com";
 let allCustomers = [];
+let currentCustomerId = null; // Added
 
 // DOM Elements
 const customerListEl = document.getElementById('customerList');
@@ -18,6 +19,7 @@ const closeModalBtn = document.getElementById('closeModal');
 const historyListEl = document.getElementById('historyList');
 const modalCustomerName = document.getElementById('modalCustomerName');
 const langSelect = document.getElementById("langSelect");
+const downloadStatementBtn = document.getElementById('downloadStatementBtn'); // Added
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -42,6 +44,33 @@ document.addEventListener('DOMContentLoaded', () => {
     historyModal.addEventListener('click', (e) => {
         if (e.target === historyModal) historyModal.classList.remove('modal--show');
     });
+
+    // PDF Download
+    if (downloadStatementBtn) {
+        downloadStatementBtn.addEventListener('click', () => {
+            if (!currentCustomerId) return;
+            
+            fetch(`${BASE_URL}/api/generateStatement?id=${currentCustomerId}`)
+              .then(res => {
+                  if (!res.ok) throw new Error('Failed to generate PDF');
+                  return res.blob();
+              })
+              .then(blob => {
+                 const url = window.URL.createObjectURL(blob);
+                 const a = document.createElement("a");
+                 a.href = url;
+                 a.download = "statement.pdf";
+                 document.body.appendChild(a);
+                 a.click();
+                 window.URL.revokeObjectURL(url);
+                 document.body.removeChild(a);
+              })
+              .catch(err => {
+                  console.error(err);
+                  alert(translate('errorFetch'));
+              });
+        });
+    }
 });
 
 async function loadCustomers() {
@@ -95,6 +124,7 @@ function filterCustomers(query) {
 }
 
 window.viewHistory = async function(customerId) {
+    currentCustomerId = customerId; // Added
     // Show loading in modal
     historyListEl.innerHTML = `<div class="loading">${translate('loading')}</div>`;
     historyModal.classList.add('modal--show');

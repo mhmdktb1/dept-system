@@ -994,6 +994,36 @@ function initializeEventListeners() {
         });
     }
 
+    // Generate PDF Statement Button
+    const downloadStatementBtn = document.getElementById('downloadStatementBtn');
+    if (downloadStatementBtn) {
+        downloadStatementBtn.addEventListener('click', () => {
+            if (!currentCustomerId) return;
+            
+            if (customerMenuDropdown) customerMenuDropdown.classList.remove('show');
+
+            fetch(`${BASE_URL}/api/generateStatement?id=${currentCustomerId}`)
+              .then(res => {
+                  if (!res.ok) throw new Error('Failed to generate PDF');
+                  return res.blob();
+              })
+              .then(blob => {
+                 const url = window.URL.createObjectURL(blob);
+                 const a = document.createElement("a");
+                 a.href = url;
+                 a.download = "statement.pdf";
+                 document.body.appendChild(a);
+                 a.click();
+                 window.URL.revokeObjectURL(url);
+                 document.body.removeChild(a);
+              })
+              .catch(err => {
+                  console.error(err);
+                  alert(translate('errorFetch'));
+              });
+        });
+    }
+
     // Close History Modal
     const closeHistoryModal = document.getElementById('closeHistoryModal');
     if (closeHistoryModal) {

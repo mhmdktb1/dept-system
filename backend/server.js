@@ -12,6 +12,7 @@ import getCustomerRouter from './routes/getCustomer.js';
 import getCustomersRouter from './routes/getCustomers.js';
 import getSummaryRouter from './routes/getSummary.js';
 import updateCustomerRouter from './routes/updateCustomer.js';
+import generateStatementRouter from './routes/generateStatement.js'; // Added
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +36,7 @@ app.use('/api/getCustomer', getCustomerRouter);
 app.use('/api/getCustomers', getCustomersRouter);
 app.use('/api/getSummary', getSummaryRouter);
 app.use('/api/updateCustomer', updateCustomerRouter);
+app.use('/api/generateStatement', generateStatementRouter); // Added
 
 // 404 handler
 app.use((req, res) => {

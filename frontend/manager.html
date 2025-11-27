@@ -128,7 +128,10 @@
         <div class="modal__content history-modal-content">
             <div class="modal__header">
                 <h2 class="modal__title" id="modalCustomerName">History</h2>
-                <button class="modal__close" id="closeModal">&times;</button>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button id="downloadStatementBtn" class="view-btn" data-i18n="generateStatement">Generate PDF Statement</button>
+                    <button class="modal__close" id="closeModal">&times;</button>
+                </div>
             </div>
             <div class="modal__body">
                 <div id="historyList"></div>
