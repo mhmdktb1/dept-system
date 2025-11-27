@@ -4,6 +4,8 @@
    Connected to Render Backend
    ==================================== */
 
+import { getLang, setLang, applyTranslations, translate } from './lang.js';
+
 // Protection Check
 const role = localStorage.getItem("role");
 if (role !== "admin") {
@@ -52,7 +54,7 @@ function initializeGoogleAuth() {
                 }
                 accessToken = response.access_token;
                 updateConnectButtonState(true);
-                showToast('Google Drive Connected!', 'success');
+                showToast(translate('driveConnectedSuccess'), 'success');
             },
         });
     } catch (e) {
@@ -63,14 +65,18 @@ function initializeGoogleAuth() {
 
 // Call initialization
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeGoogleAuth);
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeGoogleAuth();
+        applyTranslations(); // Apply translations on load
+    });
 } else {
     initializeGoogleAuth();
+    applyTranslations(); // Apply translations if already loaded
 }
 
 function handleConnectClick() {
     if (accessToken) {
-        showToast('Already connected to Google Drive', 'info');
+        showToast(translate('alreadyConnected'), 'info');
         return;
     }
     // Request authorization
@@ -81,25 +87,25 @@ function updateConnectButtonState(isConnected) {
     const btn = document.getElementById('connectDriveBtn');
     if (btn) {
         if (isConnected) {
-            btn.textContent = 'Drive Connected';
+            btn.textContent = translate('driveConnected');
             btn.classList.remove('btn--secondary');
             btn.classList.add('btn--success'); // You might need to define this class or use inline style
             btn.style.backgroundColor = '#28a745';
             btn.style.color = 'white';
         } else {
-            btn.textContent = 'Connect Drive';
+            btn.textContent = translate('connectDrive');
         }
     }
 }
 
 function openPicker() {
     if (!accessToken) {
-        alert("Please connect to Google Drive first (Top Right Button)");
+        alert(translate('connectDriveFirst'));
         return;
     }
     
     if (!pickerInited) {
-        alert("Google Picker API not loaded yet. Please refresh.");
+        alert(translate('googlePickerNotLoaded'));
         return;
     }
     
@@ -125,7 +131,7 @@ function pickerCallback(data) {
         
         const statusText = document.getElementById('picker-status-text');
         if (statusText) {
-            statusText.textContent = `Selected: ${fileName}`;
+            statusText.textContent = `${translate('selected')}: ${fileName}`;
             statusText.style.color = "green";
         }
     }
@@ -137,13 +143,13 @@ function pickerCallback(data) {
  */
 async function uploadFileToDrive(file) {
     if (!accessToken) {
-        alert("Please connect to Google Drive first");
+        alert(translate('connectDriveFirst'));
         return;
     }
 
     const statusText = document.getElementById('picker-status-text');
     if (statusText) {
-        statusText.textContent = 'Uploading image...';
+        statusText.textContent = translate('uploadingImage');
         statusText.style.color = 'blue';
     }
 
@@ -175,17 +181,17 @@ async function uploadFileToDrive(file) {
         selectedInvoiceUrl = `https://drive.google.com/uc?id=${fileId}`;
         
         if (statusText) {
-            statusText.textContent = `Uploaded: ${file.name}`;
+            statusText.textContent = `${translate('uploaded')}: ${file.name}`;
             statusText.style.color = "green";
         }
         
     } catch (error) {
         console.error('Drive upload error:', error);
         if (statusText) {
-            statusText.textContent = 'Upload failed. Try again.';
+            statusText.textContent = translate('uploadFailed');
             statusText.style.color = 'red';
         }
-        alert('Failed to upload to Google Drive: ' + error.message);
+        alert(translate('uploadFailed') + ': ' + error.message);
     }
 }
 
@@ -211,8 +217,8 @@ async function loadCustomers() {
         const response = await fetch(`${BASE_URL}/api/getCustomers`);
         
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Failed to fetch customers' }));
-            throw new Error(errorData.error || 'Failed to fetch customers');
+            const errorData = await response.json().catch(() => ({ error: translate('failedToFetchCustomers') }));
+            throw new Error(errorData.error || translate('failedToFetchCustomers'));
         }
         
         allCustomers = await response.json();
@@ -230,7 +236,7 @@ async function loadCustomers() {
         return allCustomers;
     } catch (error) {
         console.error('Error loading customers:', error);
-        alert('Error loading customers: ' + error.message);
+        alert(translate('errorLoadingCustomers') + ': ' + error.message);
         
         if (loadingIndicator) loadingIndicator.style.display = 'none';
         if (emptyState) emptyState.style.display = 'block';
@@ -252,7 +258,7 @@ async function loadCustomerDetails(customerId) {
     
     try {
         // Show loading state in modal
-        if (modalCustomerInfo) modalCustomerInfo.innerHTML = '<div class="loading">Loading customer details...</div>';
+        if (modalCustomerInfo) modalCustomerInfo.innerHTML = `<div class="loading">${translate('loadingCustomerDetails')}</div>`;
         if (modalTransactionsList) modalTransactionsList.innerHTML = '';
         
         // Open modal immediately
@@ -261,8 +267,8 @@ async function loadCustomerDetails(customerId) {
         const response = await fetch(`${BASE_URL}/api/getCustomer?id=${customerId}`);
         
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Failed to fetch customer details' }));
-            throw new Error(errorData.error || 'Failed to fetch customer details');
+            const errorData = await response.json().catch(() => ({ error: translate('failedToFetchCustomerDetails') }));
+            throw new Error(errorData.error || translate('failedToFetchCustomerDetails'));
         }
         
         const customer = await response.json();
@@ -285,7 +291,7 @@ async function loadCustomerDetails(customerId) {
         
     } catch (error) {
         console.error('Error loading customer details:', error);
-        alert('Error loading customer details: ' + error.message);
+        alert(translate('errorLoadingCustomerDetails') + ': ' + error.message);
         hideModal('customerDetailsModal');
     }
 }
@@ -300,24 +306,24 @@ function renderCustomerInfoCard(customer) {
     modalCustomerInfo.innerHTML = `
         <h3>${escapeHtml(customer.name)}</h3>
         <div class="stat-row">
-            <span class="stat-label">Phone</span>
+            <span class="stat-label">${translate('phoneNumber')}</span>
             <span class="stat-value">${escapeHtml(customer.phone || 'N/A')}</span>
         </div>
         <div class="stat-row">
-            <span class="stat-label">Total Debt</span>
+            <span class="stat-label">${translate('totalDebt')}</span>
             <span class="stat-value text-danger">$${(customer.totalDebt || 0).toFixed(2)}</span>
         </div>
         <div class="stat-row">
-            <span class="stat-label">Total Paid</span>
+            <span class="stat-label">${translate('totalPaid')}</span>
             <span class="stat-value text-success">$${(customer.totalPaid || 0).toFixed(2)}</span>
         </div>
         <div class="stat-row" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #eee;">
-            <span class="stat-label" style="font-weight: 700;">Current Balance</span>
+            <span class="stat-label" style="font-weight: 700;">${translate('currentBalance')}</span>
             <span class="stat-value ${balanceClass}" style="font-size: 1.4rem;">$${balance.toFixed(2)}</span>
         </div>
         ${customer.note ? `
         <div style="margin-top: 16px; color: #666; font-size: 0.9rem;">
-            <strong>Notes:</strong><br>
+            <strong>${translate('notes')}:</strong><br>
             ${escapeHtml(customer.note)}
         </div>
         ` : ''}
@@ -329,7 +335,7 @@ function renderRecentTransactions(transactions) {
     if (!list) return;
     
     if (!transactions || transactions.length === 0) {
-        list.innerHTML = '<p style="color: #999; text-align: center;">No recent transactions</p>';
+        list.innerHTML = `<p style="color: #999; text-align: center;">${translate('noRecentTransactions')}</p>`;
         return;
     }
     
@@ -350,7 +356,7 @@ function createTransactionHTML(transaction) {
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee;">
             <div>
                 <div style="font-weight: 600; color: ${isDebt ? '#e74c3c' : '#27ae60'}">
-                    ${isDebt ? 'Debt' : 'Payment'}
+                    ${isDebt ? translate('debt') : translate('payment')}
                 </div>
                 <div style="font-size: 0.85rem; color: #999;">${dateStr}</div>
                 ${transaction.note ? `<div style="font-size: 0.85rem; color: #666;">${escapeHtml(transaction.note)}</div>` : ''}
@@ -383,8 +389,8 @@ async function addCustomer(name, phone, note) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Failed to add customer' }));
-            throw new Error(errorData.error || 'Failed to add customer');
+            const errorData = await response.json().catch(() => ({ error: translate('failedToAddCustomer') }));
+            throw new Error(errorData.error || translate('failedToAddCustomer'));
         }
 
         const result = await response.json();
@@ -393,12 +399,12 @@ async function addCustomer(name, phone, note) {
         await loadCustomers();
         
         // Show success message
-        showToast('Customer added successfully', 'success');
+        showToast(translate('customerAddedSuccess'), 'success');
         
         return result;
     } catch (error) {
         console.error('Error adding customer:', error);
-        alert('Error adding customer: ' + error.message);
+        alert(translate('errorAddingCustomer') + ': ' + error.message);
         throw error;
     }
 }
@@ -426,8 +432,8 @@ async function addDebt(customerId, amount, note, invoiceImageUrl) {
         });
         
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Failed to add debt' }));
-            throw new Error(errorData.error || 'Failed to add debt');
+            const errorData = await response.json().catch(() => ({ error: translate('failedToAddDebt') }));
+            throw new Error(errorData.error || translate('failedToAddDebt'));
         }
         
         const result = await response.json();
@@ -439,12 +445,12 @@ async function addDebt(customerId, amount, note, invoiceImageUrl) {
         await loadCustomers();
         
         // Show success message
-        showToast('Debt added successfully', 'success');
+        showToast(translate('debtAddedSuccess'), 'success');
         
         return result;
     } catch (error) {
         console.error('Error adding debt:', error);
-        alert('Error adding debt: ' + error.message);
+        alert(translate('errorAddingDebt') + ': ' + error.message);
         throw error;
     }
 }
@@ -470,8 +476,8 @@ async function addPayment(customerId, amount, note) {
         });
         
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Failed to add payment' }));
-            throw new Error(errorData.error || 'Failed to add payment');
+            const errorData = await response.json().catch(() => ({ error: translate('failedToAddPayment') }));
+            throw new Error(errorData.error || translate('failedToAddPayment'));
         }
         
         const result = await response.json();
@@ -483,12 +489,12 @@ async function addPayment(customerId, amount, note) {
         await loadCustomers();
         
         // Show success message
-        showToast('Payment added successfully', 'success');
+        showToast(translate('paymentAddedSuccess'), 'success');
         
         return result;
     } catch (error) {
         console.error('Error adding payment:', error);
-        alert('Error adding payment: ' + error.message);
+        alert(translate('errorAddingPayment') + ': ' + error.message);
         throw error;
     }
 }
@@ -516,8 +522,8 @@ async function updateCustomer(customerId, name, phone, note) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Failed to update customer' }));
-            throw new Error(errorData.error || 'Failed to update customer');
+            const errorData = await response.json().catch(() => ({ error: translate('failedToUpdateCustomer') }));
+            throw new Error(errorData.error || translate('failedToUpdateCustomer'));
         }
 
         const result = await response.json();
@@ -529,12 +535,12 @@ async function updateCustomer(customerId, name, phone, note) {
         await loadCustomers();
         
         // Show success message
-        showToast('Customer updated successfully', 'success');
+        showToast(translate('customerUpdatedSuccess'), 'success');
         
         return result;
     } catch (error) {
         console.error('Error updating customer:', error);
-        alert('Error updating customer: ' + error.message);
+        alert(translate('errorUpdatingCustomer') + ': ' + error.message);
         throw error;
     }
 }
@@ -544,7 +550,7 @@ async function updateCustomer(customerId, name, phone, note) {
  * @param {string} customerId - Customer ID
  */
 async function deleteCustomer(customerId) {
-    if (!confirm('Are you sure you want to delete this customer? This action cannot be undone and will delete all their transaction history.')) {
+    if (!confirm(translate('confirmDeleteCustomer'))) {
         return;
     }
 
@@ -560,8 +566,8 @@ async function deleteCustomer(customerId) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Failed to delete customer' }));
-            throw new Error(errorData.error || 'Failed to delete customer');
+            const errorData = await response.json().catch(() => ({ error: translate('failedToDeleteCustomer') }));
+            throw new Error(errorData.error || translate('failedToDeleteCustomer'));
         }
 
         // Clear current selection
@@ -576,11 +582,11 @@ async function deleteCustomer(customerId) {
         await loadCustomers();
         
         // Show success message
-        showToast('Customer deleted successfully', 'success');
+        showToast(translate('customerDeletedSuccess'), 'success');
         
     } catch (error) {
         console.error('Error deleting customer:', error);
-        alert('Error deleting customer: ' + error.message);
+        alert(translate('errorDeletingCustomer') + ': ' + error.message);
         throw error;
     }
 }
@@ -597,16 +603,16 @@ async function closeBalance(customerId) {
     const balance = customer.balance || 0;
     
     if (balance <= 0) {
-        alert('Customer has no outstanding debt to pay.');
+        alert(translate('noOutstandingDebt'));
         return;
     }
     
-    if (!confirm(`Are you sure you want to close the balance of $${balance.toFixed(2)}? This will add a payment for the full amount.`)) {
+    if (!confirm(translate('confirmCloseBalance').replace('{amount}', balance.toFixed(2)))) {
         return;
     }
     
     try {
-        await addPayment(customerId, balance, 'Balance closed via "Close Balance"');
+        await addPayment(customerId, balance, translate('balanceClosedNote'));
     } catch (error) {
         // Error handled in addPayment
     }
@@ -640,10 +646,10 @@ function renderCustomerList(customers) {
         return `
             <div class="customer-card" data-customer-id="${customer.id}">
                 <div class="customer-card__content">
-                    <h3 class="customer-card__name">${escapeHtml(customer.name || 'Unknown')}</h3>
+                    <h3 class="customer-card__name">${escapeHtml(customer.name || translate('unknown'))}</h3>
                     <div class="customer-card__info">
-                        <span class="customer-card__item">Phone: ${escapeHtml(customer.phone || 'N/A')}</span>
-                        <span class="customer-card__balance ${balanceClass}">Balance: ${balanceText}</span>
+                        <span class="customer-card__item">${translate('phone')}: ${escapeHtml(customer.phone || 'N/A')}</span>
+                        <span class="customer-card__balance ${balanceClass}">${translate('balance')}: ${balanceText}</span>
                     </div>
                 </div>
             </div>
@@ -696,25 +702,25 @@ function renderCustomerDetails(customer) {
             <h2 class="customer-info__name">${escapeHtml(customer.name || 'Unknown')}</h2>
             <div class="customer-info__grid">
                 <div class="customer-info__item">
-                    <span class="customer-info__label">Phone</span>
+                    <span class="customer-info__label">${translate('phone')}</span>
                     <span class="customer-info__value">${escapeHtml(customer.phone || 'N/A')}</span>
                 </div>
                 <div class="customer-info__item">
-                    <span class="customer-info__label">Total Debt</span>
+                    <span class="customer-info__label">${translate('totalDebt')}</span>
                     <span class="customer-info__value">$${(customer.totalDebt || 0).toFixed(2)}</span>
                 </div>
                 <div class="customer-info__item">
-                    <span class="customer-info__label">Total Paid</span>
+                    <span class="customer-info__label">${translate('totalPaid')}</span>
                     <span class="customer-info__value">$${(customer.totalPaid || 0).toFixed(2)}</span>
                 </div>
                 ${customer.note ? `
                 <div class="customer-info__item">
-                    <span class="customer-info__label">Notes</span>
+                    <span class="customer-info__label">${translate('notes')}</span>
                     <span class="customer-info__value">${escapeHtml(customer.note)}</span>
                 </div>
                 ` : ''}
                 <div class="customer-info__item customer-info__item--balance">
-                    <span class="customer-info__label">Current Balance</span>
+                    <span class="customer-info__label">${translate('currentBalance')}</span>
                     <span class="customer-info__value ${balanceClass}">${balanceText}</span>
                 </div>
             </div>
@@ -731,7 +737,7 @@ function renderFullTransactionHistory(transactions) {
     if (!list) return;
     
     if (!transactions || transactions.length === 0) {
-        list.innerHTML = '<div class="empty-message">No transactions found</div>';
+        list.innerHTML = `<div class="empty-message">${translate('noTransactionsFound')}</div>`;
         return;
     }
     
@@ -752,7 +758,7 @@ function renderFullTransactionHistory(transactions) {
                     <div class="transaction-item__header">
                         <span class="transaction-item__date">${formattedDate}</span>
                         <span class="transaction-item__type transaction-item__type--${isDebt ? 'debt' : 'payment'}">
-                            ${isDebt ? 'DEBT' : 'PAYMENT'}
+                            ${isDebt ? translate('debt').toUpperCase() : translate('payment').toUpperCase()}
                         </span>
                     </div>
                     <div class="transaction-item__amount transaction-item__amount--${isDebt ? 'debt' : 'payment'}">
@@ -763,7 +769,7 @@ function renderFullTransactionHistory(transactions) {
                     ` : ''}
                     ${transaction.invoiceImageUrl ? `
                     <a href="${transaction.invoiceImageUrl}" target="_blank" class="transaction-item__image">
-                        View Invoice
+                        ${translate('viewInvoice')}
                     </a>
                     ` : ''}
                 </div>
@@ -1016,7 +1022,7 @@ function initializeEventListeners() {
             const note = document.getElementById('customerNotes').value.trim();
             
             if (!name || !phone) {
-                alert('Please fill in all required fields');
+                alert(translate('fillRequiredFields'));
                 return;
             }
             
@@ -1051,7 +1057,7 @@ function initializeEventListeners() {
     if (addDebtBtn) {
         addDebtBtn.addEventListener('click', () => {
             if (!currentCustomerId) {
-                alert('Please select a customer first');
+                alert(translate('selectCustomerFirst'));
                 return;
             }
             showModal('addDebtModal');
@@ -1065,7 +1071,7 @@ function initializeEventListeners() {
         addDebtForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!currentCustomerId) {
-                alert('No customer selected');
+                alert(translate('noCustomerSelected'));
                 return;
             }
             
@@ -1073,7 +1079,7 @@ function initializeEventListeners() {
             const note = document.getElementById('debtNote').value.trim();
             
             if (isNaN(amount) || amount <= 0) {
-                alert('Please enter a valid amount');
+                alert(translate('enterValidAmount'));
                 return;
             }
 
@@ -1097,7 +1103,7 @@ function initializeEventListeners() {
                 const invoiceOptions = document.getElementById('invoice-options');
                 const btnShowInvoiceOptions = document.getElementById('btn-show-invoice-options');
                 if (invoiceOptions) invoiceOptions.style.display = 'none';
-                if (btnShowInvoiceOptions) btnShowInvoiceOptions.textContent = 'Add Invoice Image';
+                if (btnShowInvoiceOptions) btnShowInvoiceOptions.textContent = translate('addInvoiceImage');
                 
             } catch (error) {
                 // Error already handled in addDebt function
@@ -1126,7 +1132,7 @@ function initializeEventListeners() {
     if (addPaymentBtn) {
         addPaymentBtn.addEventListener('click', () => {
             if (!currentCustomerId) {
-                alert('Please select a customer first');
+                alert(translate('selectCustomerFirst'));
                 return;
             }
             showModal('addPaymentModal');
@@ -1149,10 +1155,10 @@ function initializeEventListeners() {
             // Toggle visibility
             if (invoiceOptions.style.display === 'none') {
                 invoiceOptions.style.display = 'flex';
-                btnShowInvoiceOptions.textContent = 'Hide Options';
+                btnShowInvoiceOptions.textContent = translate('hideOptions');
             } else {
                 invoiceOptions.style.display = 'none';
-                btnShowInvoiceOptions.textContent = 'Add Invoice Image';
+                btnShowInvoiceOptions.textContent = translate('addInvoiceImage');
             }
         });
     }
@@ -1172,7 +1178,7 @@ function initializeEventListeners() {
                 // Hide options after selection
                 if (invoiceOptions) {
                     invoiceOptions.style.display = 'none';
-                    if (btnShowInvoiceOptions) btnShowInvoiceOptions.textContent = 'Change Invoice Image';
+                    if (btnShowInvoiceOptions) btnShowInvoiceOptions.textContent = translate('changeInvoiceImage');
                 }
             }
         });
@@ -1193,7 +1199,7 @@ function initializeEventListeners() {
         addPaymentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!currentCustomerId) {
-                alert('No customer selected');
+                alert(translate('noCustomerSelected'));
                 return;
             }
             
@@ -1201,7 +1207,7 @@ function initializeEventListeners() {
             const note = document.getElementById('paymentNote').value.trim();
             
             if (isNaN(amount) || amount <= 0) {
-                alert('Please enter a valid amount');
+                alert(translate('enterValidAmount'));
                 return;
             }
             
@@ -1236,7 +1242,7 @@ function initializeEventListeners() {
     if (editCustomerBtn) {
         editCustomerBtn.addEventListener('click', () => {
             if (!currentCustomerId) {
-                alert('Please select a customer first');
+                alert(translate('selectCustomerFirst'));
                 return;
             }
             
@@ -1265,7 +1271,7 @@ function initializeEventListeners() {
             const note = document.getElementById('editCustomerNotes').value.trim();
             
             if (!name || !phone) {
-                alert('Please fill in all required fields');
+                alert(translate('fillRequiredFields'));
                 return;
             }
             
@@ -1297,7 +1303,7 @@ function initializeEventListeners() {
     if (deleteCustomerBtn) {
         deleteCustomerBtn.addEventListener('click', () => {
             if (!currentCustomerId) {
-                alert('Please select a customer first');
+                alert(translate('selectCustomerFirst'));
                 return;
             }
             deleteCustomer(currentCustomerId);
@@ -1311,7 +1317,7 @@ function initializeEventListeners() {
     if (closeBalanceBtn) {
         closeBalanceBtn.addEventListener('click', () => {
             if (!currentCustomerId) {
-                alert('Please select a customer first');
+                alert(translate('selectCustomerFirst'));
                 return;
             }
             closeBalance(currentCustomerId);
@@ -1366,6 +1372,15 @@ function initializeEventListeners() {
             window.location.href = "login.html";
         });
     }
+
+    // Language Switcher
+    const langSelect = document.getElementById('langSelect');
+    if (langSelect) {
+        langSelect.value = getLang();
+        langSelect.addEventListener('change', (e) => {
+            setLang(e.target.value);
+        });
+    }
 }
 
 // ====================================
@@ -1381,13 +1396,13 @@ async function initializeApp() {
         const healthCheck = await fetch(`${BASE_URL}/health`);
         if (!healthCheck.ok) {
             console.warn('Backend health check failed');
-            showToast('Warning: Backend might be down', 'error');
+            showToast(translate('backendWarning'), 'error');
         } else {
             console.log('Backend is online');
         }
     } catch (e) {
         console.error('Backend unreachable:', e);
-        showToast('Error: Cannot connect to server. Please wait for it to wake up.', 'error');
+        showToast(translate('backendError'), 'error');
     }
 
     // Set up event listeners

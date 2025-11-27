@@ -16,11 +16,17 @@
     <div class="app-container">
         <!-- Header -->
         <header class="header">
-            <h1 class="header__title">Chocair Fresh – Debt Manager</h1>
+            <h1 class="header__title" data-i18n="appTitle">Chocair Fresh – Debt Manager</h1>
             <div class="header__actions">
-                <button id="connectDriveBtn" class="btn btn--secondary btn--small" style="margin-right: 10px;">Connect Drive</button>
-                <button id="logoutBtn" class="btn btn--secondary btn--small" style="margin-right: 10px; border-color: #dc2626; color: #dc2626;">Logout</button>
-                <button id="addCustomerBtn" class="btn btn--primary btn--small">إضافة زبون جديد</button>
+                <div style="display: inline-block; margin-right: 10px;">
+                    <select id="langSelect" style="padding: 5px; border-radius: 5px;">
+                        <option value="en">English</option>
+                        <option value="ar">العربية</option>
+                    </select>
+                </div>
+                <button id="connectDriveBtn" class="btn btn--secondary btn--small" style="margin-right: 10px;" data-i18n="connectDrive">Connect Drive</button>
+                <button id="logoutBtn" class="btn btn--secondary btn--small" style="margin-right: 10px; border-color: #dc2626; color: #dc2626;" data-i18n="logout">Logout</button>
+                <button id="addCustomerBtn" class="btn btn--primary btn--small" data-i18n="addCustomer">Add Customer</button>
             </div>
         </header>
 
@@ -30,7 +36,7 @@
             <div class="customer-panel">
                 <!-- Total Outstanding Debt Card -->
                 <div class="debt-card">
-                    <div class="debt-card__label">Total Outstanding Debt</div>
+                    <div class="debt-card__label" data-i18n="totalOutstandingDebt">Total Outstanding Debt</div>
                     <div class="debt-card__amount-container">
                         <div class="debt-card__amount" id="totalDebtAmount">******</div>
                         <button class="debt-card__toggle" id="eyeToggleBtn" aria-label="Toggle debt visibility">
@@ -48,6 +54,7 @@
                         type="text" 
                         id="searchInput" 
                         class="search__input" 
+                        data-i18n="searchPlaceholder"
                         placeholder="Search customers by name or phone..."
                         autocomplete="off"
                     >
@@ -56,19 +63,19 @@
                 <!-- Sort Control -->
                 <div class="sort">
                     <select id="sortSelect" class="sort__select">
-                        <option value="name_asc">Sort: A–Z</option>
-                        <option value="name_desc">Sort: Z–A</option>
-                        <option value="balance_desc">Sort: Highest Balance</option>
-                        <option value="balance_asc">Sort: Lowest Balance</option>
+                        <option value="name_asc" data-i18n="sortAZ">Sort: A–Z</option>
+                        <option value="name_desc" data-i18n="sortZA">Sort: Z–A</option>
+                        <option value="balance_desc" data-i18n="sortHighest">Sort: Highest Balance</option>
+                        <option value="balance_asc" data-i18n="sortLowest">Sort: Lowest Balance</option>
                     </select>
                 </div>
 
                 <!-- Customer List -->
                 <div class="customer-list-container">
                     <div id="customerList" class="customer-list"></div>
-                    <div id="loadingIndicator" class="loading">Loading customers...</div>
+                    <div id="loadingIndicator" class="loading" data-i18n="loadingCustomers">Loading customers...</div>
                     <div id="emptyState" class="empty-state" style="display: none;">
-                        <p>No customers found.</p>
+                        <p data-i18n="noCustomersFound">No customers found.</p>
                     </div>
                 </div>
             </div>
@@ -80,7 +87,7 @@
 
             <!-- Placeholder when no customer selected -->
             <div id="noSelectionPlaceholder" class="placeholder" style="display: none;">
-                <p>Select a customer to view details</p>
+                <p data-i18n="selectCustomer">Select a customer to view details</p>
             </div>
         </div>
     </div>
@@ -95,12 +102,12 @@
                     <div class="dropdown">
                         <button class="btn-icon" id="customerMenuBtn">⋮</button>
                         <div class="dropdown-content" id="customerMenuDropdown">
-                            <button id="addDebtBtn">Add Debt</button>
-                            <button id="addPaymentBtn">Add Payment</button>
-                            <button id="closeBalanceBtn">Close Balance</button>
-                            <button id="editCustomerBtn">Edit Customer</button>
-                            <button id="deleteCustomerBtn" class="text-danger">Delete Customer</button>
-                            <button id="viewHistoryBtn">View Full History</button>
+                            <button id="addDebtBtn" data-i18n="addDebt">Add Debt</button>
+                            <button id="addPaymentBtn" data-i18n="addPayment">Add Payment</button>
+                            <button id="closeBalanceBtn" data-i18n="closeBalance">Close Balance</button>
+                            <button id="editCustomerBtn" data-i18n="editCustomer">Edit Customer</button>
+                            <button id="deleteCustomerBtn" class="text-danger" data-i18n="deleteCustomer">Delete Customer</button>
+                            <button id="viewHistoryBtn" data-i18n="viewHistory">View Full History</button>
                         </div>
                     </div>
                     <button class="modal__close" id="closeCustomerDetailsModal" aria-label="Close">&times;</button>
@@ -112,7 +119,7 @@
                 
                 <!-- Recent Transactions -->
                 <div class="transactions-preview">
-                    <h3>Recent Transactions</h3>
+                    <h3 data-i18n="recentTransactions">Recent Transactions</h3>
                     <div id="modalTransactionsList" class="transactions__list"></div>
                 </div>
             </div>
@@ -123,7 +130,7 @@
     <div id="transactionHistoryModal" class="modal modal--fullscreen">
         <div class="modal__content modal__content--fullscreen">
             <div class="modal__header">
-                <h2 class="modal__title">Transaction History</h2>
+                <h2 class="modal__title" data-i18n="transactionHistory">Transaction History</h2>
                 <button class="modal__close" id="closeHistoryModal" aria-label="Close">&times;</button>
             </div>
             <div class="modal__body">
@@ -136,45 +143,48 @@
     <div id="addCustomerModal" class="modal">
         <div class="modal__content">
             <div class="modal__header">
-                <h2 class="modal__title">Add Customer</h2>
+                <h2 class="modal__title" data-i18n="addCustomer">Add Customer</h2>
                 <button class="modal__close" id="closeCustomerModal" aria-label="Close">&times;</button>
             </div>
             <form id="addCustomerForm" class="modal__form">
                 <div class="form-group">
-                    <label for="customerName" class="form-group__label">Customer Name *</label>
+                    <label for="customerName" class="form-group__label" data-i18n="customerName">Customer Name *</label>
                     <input 
                         type="text" 
                         id="customerName" 
                         name="name" 
                         class="form-group__input"
                         required
+                        data-i18n="enterName"
                         placeholder="Enter customer name"
                     >
                 </div>
                 <div class="form-group">
-                    <label for="customerPhone" class="form-group__label">Phone Number *</label>
+                    <label for="customerPhone" class="form-group__label" data-i18n="phoneNumber">Phone Number *</label>
                     <input 
                         type="tel" 
                         id="customerPhone" 
                         name="phone" 
                         class="form-group__input"
                         required
+                        data-i18n="enterPhone"
                         placeholder="Enter phone number"
                     >
                 </div>
                 <div class="form-group">
-                    <label for="customerNotes" class="form-group__label">Notes</label>
+                    <label for="customerNotes" class="form-group__label" data-i18n="notes">Notes</label>
                     <textarea 
                         id="customerNotes" 
                         name="notes" 
                         class="form-group__textarea"
                         rows="3"
+                        data-i18n="optionalNotes"
                         placeholder="Optional notes about this customer..."
                     ></textarea>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn--secondary" id="cancelCustomerBtn">Cancel</button>
-                    <button type="submit" class="btn btn--primary">Add Customer</button>
+                    <button type="button" class="btn btn--secondary" id="cancelCustomerBtn" data-i18n="cancel">Cancel</button>
+                    <button type="submit" class="btn btn--primary" data-i18n="addCustomer">Add Customer</button>
                 </div>
             </form>
         </div>
@@ -184,45 +194,48 @@
     <div id="editCustomerModal" class="modal">
         <div class="modal__content">
             <div class="modal__header">
-                <h2 class="modal__title">Edit Customer</h2>
+                <h2 class="modal__title" data-i18n="editCustomer">Edit Customer</h2>
                 <button class="modal__close" id="closeEditCustomerModal" aria-label="Close">&times;</button>
             </div>
             <form id="editCustomerForm" class="modal__form">
                 <div class="form-group">
-                    <label for="editCustomerName" class="form-group__label">Customer Name *</label>
+                    <label for="editCustomerName" class="form-group__label" data-i18n="customerName">Customer Name *</label>
                     <input 
                         type="text" 
                         id="editCustomerName" 
                         name="name" 
                         class="form-group__input"
                         required
+                        data-i18n="enterName"
                         placeholder="Enter customer name"
                     >
                 </div>
                 <div class="form-group">
-                    <label for="editCustomerPhone" class="form-group__label">Phone Number *</label>
+                    <label for="editCustomerPhone" class="form-group__label" data-i18n="phoneNumber">Phone Number *</label>
                     <input 
                         type="tel" 
                         id="editCustomerPhone" 
                         name="phone" 
                         class="form-group__input"
                         required
+                        data-i18n="enterPhone"
                         placeholder="Enter phone number"
                     >
                 </div>
                 <div class="form-group">
-                    <label for="editCustomerNotes" class="form-group__label">Notes</label>
+                    <label for="editCustomerNotes" class="form-group__label" data-i18n="notes">Notes</label>
                     <textarea 
                         id="editCustomerNotes" 
                         name="notes" 
                         class="form-group__textarea"
                         rows="3"
+                        data-i18n="optionalNotes"
                         placeholder="Optional notes about this customer..."
                     ></textarea>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn--secondary" id="cancelEditCustomerBtn">Cancel</button>
-                    <button type="submit" class="btn btn--primary">Update Customer</button>
+                    <button type="button" class="btn btn--secondary" id="cancelEditCustomerBtn" data-i18n="cancel">Cancel</button>
+                    <button type="submit" class="btn btn--primary" data-i18n="save">Save</button>
                 </div>
             </form>
         </div>
@@ -232,12 +245,12 @@
     <div id="addDebtModal" class="modal">
         <div class="modal__content">
             <div class="modal__header">
-                <h2 class="modal__title">Add Debt</h2>
+                <h2 class="modal__title" data-i18n="addDebt">Add Debt</h2>
                 <button class="modal__close" id="closeDebtModal" aria-label="Close">&times;</button>
             </div>
             <form id="addDebtForm" class="modal__form">
                 <div class="form-group">
-                    <label for="debtAmount" class="form-group__label">Amount *</label>
+                    <label for="debtAmount" class="form-group__label" data-i18n="amount">Amount *</label>
                     <input 
                         type="number" 
                         id="debtAmount" 
@@ -246,33 +259,35 @@
                         step="0.01" 
                         min="0" 
                         required
+                        data-i18n="enterAmount"
                         placeholder="0.00"
                     >
                 </div>
                 <div class="form-group">
-                    <label for="debtNote" class="form-group__label">Note</label>
+                    <label for="debtNote" class="form-group__label" data-i18n="note">Note</label>
                     <textarea 
                         id="debtNote" 
                         name="note" 
                         class="form-group__textarea"
                         rows="3"
+                        data-i18n="optionalNotes"
                         placeholder="Optional note about this debt..."
                     ></textarea>
                 </div>
                 <div class="form-group">
-                    <label class="form-group__label">Invoice Image (Optional)</label>
+                    <label class="form-group__label" data-i18n="addInvoiceImage">Invoice Image (Optional)</label>
                     
                     <!-- Main Add Button -->
-                    <button type="button" id="btn-show-invoice-options" class="btn btn--secondary btn--small" style="width: 100%; margin-bottom: 10px;">
+                    <button type="button" id="btn-show-invoice-options" class="btn btn--secondary btn--small" style="width: 100%; margin-bottom: 10px;" data-i18n="addInvoiceImage">
                         Add Invoice Image
                     </button>
 
                     <!-- Options (Hidden by default) -->
                     <div id="invoice-options" style="display: none; gap: 10px; margin-bottom: 10px;">
-                        <button type="button" id="btn-upload-device" class="btn btn--secondary btn--small" style="flex: 1; background-color: #f0f0f0; color: #333;">
+                        <button type="button" id="btn-upload-device" class="btn btn--secondary btn--small" style="flex: 1; background-color: #f0f0f0; color: #333;" data-i18n="uploadFromDevice">
                             Camera / Device
                         </button>
-                        <button type="button" id="btn-pick-drive" class="btn btn--secondary btn--small" style="flex: 1; background-color: #f0f0f0; color: #333;">
+                        <button type="button" id="btn-pick-drive" class="btn btn--secondary btn--small" style="flex: 1; background-color: #f0f0f0; color: #333;" data-i18n="pickFromDrive">
                             Google Drive
                         </button>
                     </div>
@@ -283,8 +298,8 @@
                     <p id="picker-status-text" style="font-size: 13px; color: #666; margin-top: 5px;"></p>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn--secondary" id="cancelDebtBtn">Cancel</button>
-                    <button type="submit" class="btn btn--primary">Add Debt</button>
+                    <button type="button" class="btn btn--secondary" id="cancelDebtBtn" data-i18n="cancel">Cancel</button>
+                    <button type="submit" class="btn btn--primary" data-i18n="addDebt">Add Debt</button>
                 </div>
             </form>
         </div>
@@ -294,12 +309,12 @@
     <div id="addPaymentModal" class="modal">
         <div class="modal__content">
             <div class="modal__header">
-                <h2 class="modal__title">Add Payment</h2>
+                <h2 class="modal__title" data-i18n="addPayment">Add Payment</h2>
                 <button class="modal__close" id="closePaymentModal" aria-label="Close">&times;</button>
             </div>
             <form id="addPaymentForm" class="modal__form">
                 <div class="form-group">
-                    <label for="paymentAmount" class="form-group__label">Amount *</label>
+                    <label for="paymentAmount" class="form-group__label" data-i18n="amount">Amount *</label>
                     <input 
                         type="number" 
                         id="paymentAmount" 
@@ -308,22 +323,24 @@
                         step="0.01" 
                         min="0" 
                         required
+                        data-i18n="enterAmount"
                         placeholder="0.00"
                     >
                 </div>
                 <div class="form-group">
-                    <label for="paymentNote" class="form-group__label">Note</label>
+                    <label for="paymentNote" class="form-group__label" data-i18n="note">Note</label>
                     <textarea 
                         id="paymentNote" 
                         name="note" 
                         class="form-group__textarea"
                         rows="3"
+                        data-i18n="optionalNotes"
                         placeholder="Optional note about this payment..."
                     ></textarea>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn--secondary" id="cancelPaymentBtn">Cancel</button>
-                    <button type="submit" class="btn btn--primary">Add Payment</button>
+                    <button type="button" class="btn btn--secondary" id="cancelPaymentBtn" data-i18n="cancel">Cancel</button>
+                    <button type="submit" class="btn btn--primary" data-i18n="addPayment">Add Payment</button>
                 </div>
             </form>
         </div>
@@ -333,19 +350,19 @@
     <div id="deleteTransactionModal" class="modal">
         <div class="modal__content">
             <div class="modal__header">
-                <h2 class="modal__title">Delete Transaction</h2>
+                <h2 class="modal__title" data-i18n="deleteTransaction">Delete Transaction</h2>
                 <button class="modal__close" id="closeDeleteTransactionModal" aria-label="Close">&times;</button>
             </div>
             <div class="modal__body">
-                <p>Are you sure you want to delete this transaction? This action cannot be undone.</p>
+                <p data-i18n="confirmDeleteTransaction">Are you sure you want to delete this transaction? This action cannot be undone.</p>
             </div>
             <div class="form-actions">
-                <button type="button" class="btn btn--secondary" id="cancelDeleteTransactionBtn">Cancel</button>
-                <button type="button" class="btn btn--danger" id="confirmDeleteTransactionBtn">Delete</button>
+                <button type="button" class="btn btn--secondary" id="cancelDeleteTransactionBtn" data-i18n="cancel">Cancel</button>
+                <button type="button" class="btn btn--danger" id="confirmDeleteTransactionBtn" data-i18n="delete">Delete</button>
             </div>
         </div>
     </div>
 
-    <script src="script.js?v=2"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>

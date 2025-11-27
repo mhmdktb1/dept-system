@@ -55,8 +55,8 @@
             font-size: 0.9rem;
         }
         .customer-balance {
-            text-align: right;
-            margin-right: 1rem;
+            text-align: end;
+            margin-inline-end: 1rem;
         }
         .balance-amount {
             font-weight: 700;
@@ -94,8 +94,14 @@
 </head>
 <body>
     <header class="manager-header">
-        <h1 class="manager-title">Manager View</h1>
-        <button id="logoutBtn" class="logout-btn">Logout</button>
+        <h1 class="manager-title" data-i18n="managerTitle">Manager View</h1>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <select id="langSelect" style="padding: 5px; border-radius: 5px;">
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+            </select>
+            <button id="logoutBtn" class="logout-btn" data-i18n="logout">Logout</button>
+        </div>
     </header>
 
     <div class="manager-container">
@@ -105,6 +111,7 @@
                 type="text" 
                 id="searchInput" 
                 class="search__input" 
+                data-i18n="searchPlaceholder"
                 placeholder="Search customers..."
                 autocomplete="off"
             >
@@ -112,7 +119,7 @@
 
         <!-- List -->
         <div id="customerList">
-            <div class="loading">Loading customers...</div>
+            <div class="loading" data-i18n="loadingCustomers">Loading customers...</div>
         </div>
     </div>
 
@@ -129,6 +136,6 @@
         </div>
     </div>
 
-    <script src="manager.js"></script>
+    <script type="module" src="manager.js"></script>
 </body>
 </html>

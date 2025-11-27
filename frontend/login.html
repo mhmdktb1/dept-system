@@ -68,18 +68,36 @@
     </style>
 </head>
 <body class="login-page">
-    <div class="login-card">
-        <h1 class="login-title">Chocair Fresh</h1>
-        <p class="login-subtitle">Enter your access code to continue</p>
-        
-        <form id="loginForm">
-            <input type="password" id="password" class="login-input" placeholder="Access Code" required autofocus>
-            <button type="submit" class="login-btn">Login</button>
-        </form>
-        <p id="errorMsg" class="error-msg">Incorrect password</p>
+    <div id="languageSwitcher" style="position:absolute; top:10px; right:10px;">
+        <select id="langSelect" style="padding: 5px; border-radius: 5px;">
+            <option value="en">English</option>
+            <option value="ar">العربية</option>
+        </select>
     </div>
 
-    <script>
+    <div class="login-card">
+        <h1 class="login-title" data-i18n="appTitle">Chocair Fresh</h1>
+        <p class="login-subtitle" data-i18n="loginTitle">Enter your access code to continue</p>
+        
+        <form id="loginForm">
+            <input type="password" id="password" class="login-input" data-i18n="password" placeholder="Access Code" required autofocus>
+            <button type="submit" class="login-btn" data-i18n="login">Login</button>
+        </form>
+        <p id="errorMsg" class="error-msg" data-i18n="incorrectPassword">Incorrect password</p>
+    </div>
+
+    <script type="module">
+        import { getLang, setLang, applyTranslations } from "./lang.js";
+
+        // Init Language
+        const langSelect = document.getElementById("langSelect");
+        langSelect.value = getLang();
+        applyTranslations();
+
+        langSelect.addEventListener("change", (e) => {
+            setLang(e.target.value);
+        });
+
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const password = document.getElementById('password').value;

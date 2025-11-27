@@ -1,3 +1,5 @@
+import { getLang, setLang, applyTranslations, translate } from "./lang.js";
+
 // Protection Check
 const role = localStorage.getItem("role");
 if (role !== "manager") {
@@ -15,9 +17,20 @@ const historyModal = document.getElementById('historyModal');
 const closeModalBtn = document.getElementById('closeModal');
 const historyListEl = document.getElementById('historyList');
 const modalCustomerName = document.getElementById('modalCustomerName');
+const langSelect = document.getElementById("langSelect");
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    // Init Language
+    langSelect.value = getLang();
+    applyTranslations();
+
+    langSelect.addEventListener("change", (e) => {
+        setLang(e.target.value);
+        // Re-render to apply translations to dynamic content
+        renderCustomers(allCustomers);
+    });
+
     loadCustomers();
     
     // Event Listeners
@@ -39,14 +52,14 @@ async function loadCustomers() {
         allCustomers = await response.json();
         renderCustomers(allCustomers);
     } catch (error) {
-        customerListEl.innerHTML = '<div class="error">Failed to load data. Please try again.</div>';
+        customerListEl.innerHTML = `<div class="error">${translate('errorFetch')}</div>`;
         console.error(error);
     }
 }
 
 function renderCustomers(customers) {
     if (customers.length === 0) {
-        customerListEl.innerHTML = '<div class="empty-state">No customers found.</div>';
+        customerListEl.innerHTML = `<div class="empty-state">${translate('noCustomersFound')}</div>`;
         return;
     }
 
@@ -58,14 +71,14 @@ function renderCustomers(customers) {
             <div class="customer-list-item">
                 <div class="customer-details">
                     <h3>${escapeHtml(c.name)}</h3>
-                    <p>${escapeHtml(c.phone || 'No phone')}</p>
+                    <p>${escapeHtml(c.phone || translate('noPhone'))}</p>
                 </div>
                 <div style="display: flex; align-items: center;">
                     <div class="customer-balance">
                         <span class="balance-amount ${balanceClass}">$${balance.toFixed(2)}</span>
-                        <small style="color: #9ca3af;">Balance</small>
+                        <small style="color: #9ca3af;">${translate('totalBalance')}</small>
                     </div>
-                    <button class="view-btn" onclick="viewHistory('${c.id}')">View History</button>
+                    <button class="view-btn" onclick="window.viewHistory('${c.id}')">${translate('viewHistory')}</button>
                 </div>
             </div>
         `;
@@ -83,7 +96,7 @@ function filterCustomers(query) {
 
 window.viewHistory = async function(customerId) {
     // Show loading in modal
-    historyListEl.innerHTML = '<div class="loading">Loading history...</div>';
+    historyListEl.innerHTML = `<div class="loading">${translate('loading')}</div>`;
     historyModal.classList.add('modal--show');
     
     try {
@@ -94,13 +107,13 @@ window.viewHistory = async function(customerId) {
         modalCustomerName.textContent = customer.name;
         renderHistory(customer.transactions || []);
     } catch (error) {
-        historyListEl.innerHTML = '<div class="error">Failed to load history.</div>';
+        historyListEl.innerHTML = `<div class="error">${translate('errorFetch')}</div>`;
     }
 };
 
 function renderHistory(transactions) {
     if (!transactions || transactions.length === 0) {
-        historyListEl.innerHTML = '<div class="empty-state">No transactions found.</div>';
+        historyListEl.innerHTML = `<div class="empty-state">${translate('noTransactions')}</div>`;
         return;
     }
 
@@ -112,19 +125,20 @@ function renderHistory(transactions) {
     historyListEl.innerHTML = sorted.map(t => {
         const isDebt = ['debt', 'debit', 'DEBT'].includes(t.type) || (t.amount < 0 && t.type !== 'payment');
         const amount = Math.abs(t.amount || 0);
-        const date = new Date(t.date || t.createdAt).toLocaleDateString();
+        const date = new Date(t.date || t.createdAt).toLocaleDateString(getLang());
+        const typeLabel = isDebt ? translate('debt') : translate('payment');
         
         return `
             <div class="history-item">
                 <div>
                     <div class="history-type ${isDebt ? 'type-debt' : 'type-payment'}">
-                        ${isDebt ? 'DEBT' : 'PAYMENT'}
+                        ${typeLabel}
                     </div>
                     <div class="history-date">${date}</div>
                     ${t.note ? `<div style="font-size: 0.85rem; color: #666; margin-top: 4px;">${escapeHtml(t.note)}</div>` : ''}
                     ${t.invoiceImageUrl ? `
                         <a href="${t.invoiceImageUrl}" target="_blank" style="display: inline-block; margin-top: 4px; font-size: 0.8rem; color: #2563eb; text-decoration: none;">
-                            View Invoice ↗
+                            ${translate('viewInvoice')} ↗
                         </a>
                     ` : ''}
                 </div>
