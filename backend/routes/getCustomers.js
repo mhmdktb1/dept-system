@@ -1,79 +1,61 @@
-/**
- * Get All Customers Route
- * 
- * This route handles GET requests to retrieve a list of all customers
- * with their summary statistics including receipt count, total debt, total paid,
- * and current balance.
- */
-
 import { getDb } from '../db.js';
 import express from 'express';
 
 const router = express.Router();
 
-/**
- * GET /api/getCustomers
- */
 router.get('/', async (req, res) => {
     try {
-        // Get database connection
         const db = await getDb();
 
-        // Fetch all customers from database
-        const customers = await db.collection('customers')
-            .find({})
-            .toArray();
+        // 1. Fetch all customers
+        const customers = await db.collection('customers').find({}).toArray();
 
-        // Fetch all transactions to calculate customer statistics
-        const allTransactions = await db.collection('transactions')
-            .find({})
-            .toArray();
+        // 2. Fetch all transactions in a single query (Optimized)
+        const transactions = await db.collection('transactions').find({}).toArray();
 
-        // Group transactions by customerId and calculate totals
-        const customerStats = {};
-        
-        allTransactions.forEach((transaction) => {
-            const customerId = transaction.customerId;
-            if (!customerId) return;
+        // 3. Group transactions by customerId in memory
+        const statsMap = {};
 
-            // Initialize customer stats if not exists
-            if (!customerStats[customerId]) {
-                customerStats[customerId] = {
+        for (const t of transactions) {
+            if (!t.customerId) continue;
+            
+            // Normalize customerId to string for consistent grouping
+            // This handles both ObjectId and String formats in the database
+            const custIdStr = t.customerId.toString();
+
+            if (!statsMap[custIdStr]) {
+                statsMap[custIdStr] = {
                     totalDebt: 0,
                     totalPaid: 0,
                     receipts: 0
                 };
             }
 
-            const amount = transaction.amount || 0;
+            const type = (t.type || '').toLowerCase();
+            const amount = Math.abs(t.amount || 0);
+            
+            // Robust logic to determine if it's a debt or payment
+            // Matches logic used in generateStatement.js
+            const isDebt = ['debt', 'debit'].includes(type) || (t.amount < 0 && type !== 'payment' && type !== 'credit');
 
-            // Sum debits (money owed to the store) and count receipts
-            if (transaction.type === 'debit' || transaction.type === 'DEBT') {
-                customerStats[customerId].totalDebt += amount;
-                customerStats[customerId].receipts += 1;
+            if (isDebt) {
+                statsMap[custIdStr].totalDebt += amount;
+                statsMap[custIdStr].receipts += 1;
+            } else {
+                statsMap[custIdStr].totalPaid += amount;
             }
-            // Sum credits (payments made by customer)
-            else if (transaction.type === 'credit' || transaction.type === 'PAYMENT') {
-                customerStats[customerId].totalPaid += amount;
-            }
-        });
+        }
 
-        // Map customers to the expected format with computed statistics
-        const customersWithStats = customers.map((customer) => {
-            const customerId = customer._id.toString();
-            const stats = customerStats[customerId] || {
-                totalDebt: 0,
-                totalPaid: 0,
-                receipts: 0
-            };
-
-            // Calculate balance (what customer currently owes)
+        // 4. Map customers to output format with computed values
+        const result = customers.map(c => {
+            const cId = c._id.toString();
+            const stats = statsMap[cId] || { totalDebt: 0, totalPaid: 0, receipts: 0 };
             const balance = stats.totalDebt - stats.totalPaid;
 
             return {
-                id: customerId,
-                name: customer.name || '',
-                phone: customer.phone || '',
+                id: cId,
+                name: c.name,
+                phone: c.phone || '',
                 receipts: stats.receipts,
                 totalDebt: Number(stats.totalDebt.toFixed(2)),
                 totalPaid: Number(stats.totalPaid.toFixed(2)),
@@ -81,17 +63,11 @@ router.get('/', async (req, res) => {
             };
         });
 
-        // Return list of customers with their statistics
-        return res.status(200).json(customersWithStats);
+        res.json(result);
 
     } catch (error) {
-        // Handle database errors and other exceptions
-        console.error('Error fetching customers:', error);
-
-        // Return generic error message to avoid exposing internal details
-        return res.status(500).json({
-            error: 'Failed to fetch customers. Please try again later.'
-        });
+        console.error('Error in getCustomers:', error);
+        res.status(500).json({ error: 'Failed to fetch customers' });
     }
 });
 
