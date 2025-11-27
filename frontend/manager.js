@@ -1,4 +1,5 @@
 import { getLang, setLang, applyTranslations, translate } from "./lang.js";
+import { BASE_URL } from './config.js';
 
 // Protection Check
 const role = localStorage.getItem("role");
@@ -6,7 +7,6 @@ if (role !== "manager") {
     window.location.href = "login.html";
 }
 
-const BASE_URL = "https://dept-system.onrender.com";
 let allCustomers = [];
 let currentCustomerId = null; // Added
 

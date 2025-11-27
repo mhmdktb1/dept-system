@@ -5,16 +5,13 @@
    ==================================== */
 
 import { getLang, setLang, applyTranslations, translate } from './lang.js';
+import { BASE_URL } from './config.js';
 
 // Protection Check
 const role = localStorage.getItem("role");
 if (role !== "admin") {
     window.location.href = "login.html";
 }
-
-// Backend API Base URL
-const BASE_URL = "https://dept-system.onrender.com"; // Correct Backend URL
-// const BASE_URL = "https://chocair-fresh-backend.onrender.com"; // New Render Service Name
 
 // --- GOOGLE PICKER CONFIGURATION ---
 const GOOGLE_CLIENT_ID = "780794685039-gbqdfps9jk1hjv88r3qc1dhp08flks52.apps.googleusercontent.com";
