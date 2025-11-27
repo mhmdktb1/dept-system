@@ -109,40 +109,16 @@ router.get('/', async (req, res) => {
             const truncatedNote = noteStr.length > 30 ? noteStr.substring(0, 27) + '...' : noteStr;
             page.drawText(truncatedNote, { x: colX[3], y, size: 10, font });
 
-            // Image handling (Replaced with Link)
+            // Image handling
             const invoiceUrl = t.invoiceImageUrl;
             if (invoiceUrl) {
-                const linkText = "View Invoice";
-
-                page.drawText(linkText, {
+                page.drawText("View Invoice", {
                     x: colX[4],
                     y,
                     size: 10,
                     font,
-                    color: rgb(0, 0, 1)      // blue text
+                    color: rgb(0, 0, 0)
                 });
-
-                // underline for link style
-                page.drawLine({
-                    start: { x: colX[4], y: y - 1 },
-                    end: { x: colX[4] + (linkText.length * 5), y: y - 1 },
-                    thickness: 0.5,
-                    color: rgb(0, 0, 1)
-                });
-
-                // actual clickable link annotation
-                page.node.setAnnotation({
-                    Type: 'Annot',
-                    Subtype: 'Link',
-                    Rect: [colX[4], y - 2, colX[4] + (linkText.length * 5), y + 10],
-                    Border: [0, 0, 0],
-                    A: {
-                        Type: 'Action',
-                        S: 'URI',
-                        URI: invoiceUrl
-                    }
-                });
-
             } else {
                 page.drawText("N/A", {
                     x: colX[4],
