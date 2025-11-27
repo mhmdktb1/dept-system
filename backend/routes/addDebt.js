@@ -69,7 +69,7 @@ router.post('/', async (req, res) => {
 
         // Create transaction object
         const transaction = {
-            customerId: customerId, // Store as string to match addPayment.js
+            customerId: objectId, // Store as ObjectId
             type: 'debit', // Standardize on 'debit'
             amount: amount, // Positive amount for debt
             note: note || '',

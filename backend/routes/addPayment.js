@@ -64,7 +64,7 @@ router.post('/', async (req, res) => {
 
         // Prepare payment transaction document
         const transactionDoc = {
-            customerId: customerId,
+            customerId: objectId,
             type: 'credit', // Payment transactions are marked as "credit"
             amount: Number(amount.toFixed(2)), // Ensure 2 decimal places
             note: note || '',

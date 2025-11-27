@@ -19,7 +19,12 @@ router.get('/', async (req, res) => {
         }
 
         const transactions = await db.collection('transactions')
-            .find({ customerId: new ObjectId(id) })
+            .find({
+                $or: [
+                    { customerId: new ObjectId(id) },
+                    { customerId: id }
+                ]
+            })
             .sort({ date: 1, createdAt: 1 })
             .toArray();
 
