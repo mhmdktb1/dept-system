@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chocair Fresh – Debt Manager</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google API Scripts -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="header__title">Chocair Fresh – Debt Manager</h1>
+            <div class="header__actions">
+                <button id="connectDriveBtn" class="btn btn--secondary btn--small" style="margin-right: 10px;">Connect Drive</button>
+                <button id="logoutBtn" class="btn btn--secondary btn--small" style="margin-right: 10px; border-color: #dc2626; color: #dc2626;">Logout</button>
+                <button id="addCustomerBtn" class="btn btn--primary btn--small">إضافة زبون جديد</button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Left Panel: Customer List -->
+            <div class="customer-panel">
+                <!-- Total Outstanding Debt Card -->
+                <div class="debt-card">
+                    <div class="debt-card__label">Total Outstanding Debt</div>
+                    <div class="debt-card__amount-container">
+                        <div class="debt-card__amount" id="totalDebtAmount">******</div>
+                        <button class="debt-card__toggle" id="eyeToggleBtn" aria-label="Toggle debt visibility">
+                            <svg class="debt-card__icon" id="eyeIcon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 7C9.24 7 7 9.24 7 12C7 14.76 9.24 17 12 17C14.76 17 17 14.76 17 12C17 9.24 14.76 7 12 7ZM12 15.5C10.07 15.5 8.5 13.93 8.5 12C8.5 10.07 10.07 8.5 12 8.5C13.93 8.5 15.5 10.07 15.5 12C15.5 13.93 13.93 15.5 12 15.5ZM12 10C10.9 10 10 10.9 10 12C10 13.1 10.9 14 12 14C13.1 14 14 13.1 14 12C14 10.9 13.1 10 12 10Z" fill="#666"/>
+                                <path d="M2 2L22 22M6.5 6.5C4.01 8.99 2.5 10.5 2.5 12C2.5 15.5 6.5 19.5 12 19.5C14.5 19.5 16.5 18.5 18 17.5M17.5 17.5C19.99 15.01 21.5 13.5 21.5 12C21.5 8.5 17.5 4.5 12 4.5C9.5 4.5 7.5 5.5 6 6.5" stroke="#666" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="search">
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        class="search__input" 
+                        placeholder="Search customers by name or phone..."
+                        autocomplete="off"
+                    >
+                </div>
+
+                <!-- Sort Control -->
+                <div class="sort">
+                    <select id="sortSelect" class="sort__select">
+                        <option value="name_asc">Sort: A–Z</option>
+                        <option value="name_desc">Sort: Z–A</option>
+                        <option value="balance_desc">Sort: Highest Balance</option>
+                        <option value="balance_asc">Sort: Lowest Balance</option>
+                    </select>
+                </div>
+
+                <!-- Customer List -->
+                <div class="customer-list-container">
+                    <div id="customerList" class="customer-list"></div>
+                    <div id="loadingIndicator" class="loading">Loading customers...</div>
+                    <div id="emptyState" class="empty-state" style="display: none;">
+                        <p>No customers found.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Customer Details (Hidden by default, replaced by modal) -->
+            <div id="detailsPanel" class="details-panel" style="display: none;">
+                <!-- Legacy container kept for JS compatibility if needed, but we will use modal -->
+            </div>
+
+            <!-- Placeholder when no customer selected -->
+            <div id="noSelectionPlaceholder" class="placeholder" style="display: none;">
+                <p>Select a customer to view details</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Details Modal (Fullscreen) -->
+    <div id="customerDetailsModal" class="modal modal--fullscreen">
+        <div class="modal__content modal__content--fullscreen">
+            <div class="modal__header">
+                <h2 class="modal__title" id="modalCustomerName">Customer Name</h2>
+                <div class="modal__actions">
+                    <!-- Three Dot Menu -->
+                    <div class="dropdown">
+                        <button class="btn-icon" id="customerMenuBtn">⋮</button>
+                        <div class="dropdown-content" id="customerMenuDropdown">
+                            <button id="addDebtBtn">Add Debt</button>
+                            <button id="addPaymentBtn">Add Payment</button>
+                            <button id="closeBalanceBtn">Close Balance</button>
+                            <button id="editCustomerBtn">Edit Customer</button>
+                            <button id="deleteCustomerBtn" class="text-danger">Delete Customer</button>
+                            <button id="viewHistoryBtn">View Full History</button>
+                        </div>
+                    </div>
+                    <button class="modal__close" id="closeCustomerDetailsModal" aria-label="Close">&times;</button>
+                </div>
+            </div>
+            <div class="modal__body">
+                <!-- Customer Info -->
+                <div id="modalCustomerInfo" class="customer-info-card"></div>
+                
+                <!-- Recent Transactions -->
+                <div class="transactions-preview">
+                    <h3>Recent Transactions</h3>
+                    <div id="modalTransactionsList" class="transactions__list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction History Modal (Fullscreen) -->
+    <div id="transactionHistoryModal" class="modal modal--fullscreen">
+        <div class="modal__content modal__content--fullscreen">
+            <div class="modal__header">
+                <h2 class="modal__title">Transaction History</h2>
+                <button class="modal__close" id="closeHistoryModal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal__body">
+                <div id="fullTransactionsList" class="transactions__list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Customer Modal -->
+    <div id="addCustomerModal" class="modal">
+        <div class="modal__content">
+            <div class="modal__header">
+                <h2 class="modal__title">Add Customer</h2>
+                <button class="modal__close" id="closeCustomerModal" aria-label="Close">&times;</button>
+            </div>
+            <form id="addCustomerForm" class="modal__form">
+                <div class="form-group">
+                    <label for="customerName" class="form-group__label">Customer Name *</label>
+                    <input 
+                        type="text" 
+                        id="customerName" 
+                        name="name" 
+                        class="form-group__input"
+                        required
+                        placeholder="Enter customer name"
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="customerPhone" class="form-group__label">Phone Number *</label>
+                    <input 
+                        type="tel" 
+                        id="customerPhone" 
+                        name="phone" 
+                        class="form-group__input"
+                        required
+                        placeholder="Enter phone number"
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="customerNotes" class="form-group__label">Notes</label>
+                    <textarea 
+                        id="customerNotes" 
+                        name="notes" 
+                        class="form-group__textarea"
+                        rows="3"
+                        placeholder="Optional notes about this customer..."
+                    ></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn--secondary" id="cancelCustomerBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Add Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Customer Modal -->
+    <div id="editCustomerModal" class="modal">
+        <div class="modal__content">
+            <div class="modal__header">
+                <h2 class="modal__title">Edit Customer</h2>
+                <button class="modal__close" id="closeEditCustomerModal" aria-label="Close">&times;</button>
+            </div>
+            <form id="editCustomerForm" class="modal__form">
+                <div class="form-group">
+                    <label for="editCustomerName" class="form-group__label">Customer Name *</label>
+                    <input 
+                        type="text" 
+                        id="editCustomerName" 
+                        name="name" 
+                        class="form-group__input"
+                        required
+                        placeholder="Enter customer name"
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="editCustomerPhone" class="form-group__label">Phone Number *</label>
+                    <input 
+                        type="tel" 
+                        id="editCustomerPhone" 
+                        name="phone" 
+                        class="form-group__input"
+                        required
+                        placeholder="Enter phone number"
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="editCustomerNotes" class="form-group__label">Notes</label>
+                    <textarea 
+                        id="editCustomerNotes" 
+                        name="notes" 
+                        class="form-group__textarea"
+                        rows="3"
+                        placeholder="Optional notes about this customer..."
+                    ></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn--secondary" id="cancelEditCustomerBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Update Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Debt Modal -->
+    <div id="addDebtModal" class="modal">
+        <div class="modal__content">
+            <div class="modal__header">
+                <h2 class="modal__title">Add Debt</h2>
+                <button class="modal__close" id="closeDebtModal" aria-label="Close">&times;</button>
+            </div>
+            <form id="addDebtForm" class="modal__form">
+                <div class="form-group">
+                    <label for="debtAmount" class="form-group__label">Amount *</label>
+                    <input 
+                        type="number" 
+                        id="debtAmount" 
+                        name="amount" 
+                        class="form-group__input"
+                        step="0.01" 
+                        min="0" 
+                        required
+                        placeholder="0.00"
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="debtNote" class="form-group__label">Note</label>
+                    <textarea 
+                        id="debtNote" 
+                        name="note" 
+                        class="form-group__textarea"
+                        rows="3"
+                        placeholder="Optional note about this debt..."
+                    ></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-group__label">Invoice Image (Optional)</label>
+                    
+                    <!-- Main Add Button -->
+                    <button type="button" id="btn-show-invoice-options" class="btn btn--secondary btn--small" style="width: 100%; margin-bottom: 10px;">
+                        Add Invoice Image
+                    </button>
+
+                    <!-- Options (Hidden by default) -->
+                    <div id="invoice-options" style="display: none; gap: 10px; margin-bottom: 10px;">
+                        <button type="button" id="btn-upload-device" class="btn btn--secondary btn--small" style="flex: 1; background-color: #f0f0f0; color: #333;">
+                            Camera / Device
+                        </button>
+                        <button type="button" id="btn-pick-drive" class="btn btn--secondary btn--small" style="flex: 1; background-color: #f0f0f0; color: #333;">
+                            Google Drive
+                        </button>
+                    </div>
+
+                    <!-- Hidden File Input (No capture attribute to allow choice) -->
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                    
+                    <p id="picker-status-text" style="font-size: 13px; color: #666; margin-top: 5px;"></p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn--secondary" id="cancelDebtBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Add Debt</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Payment Modal -->
+    <div id="addPaymentModal" class="modal">
+        <div class="modal__content">
+            <div class="modal__header">
+                <h2 class="modal__title">Add Payment</h2>
+                <button class="modal__close" id="closePaymentModal" aria-label="Close">&times;</button>
+            </div>
+            <form id="addPaymentForm" class="modal__form">
+                <div class="form-group">
+                    <label for="paymentAmount" class="form-group__label">Amount *</label>
+                    <input 
+                        type="number" 
+                        id="paymentAmount" 
+                        name="amount" 
+                        class="form-group__input"
+                        step="0.01" 
+                        min="0" 
+                        required
+                        placeholder="0.00"
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="paymentNote" class="form-group__label">Note</label>
+                    <textarea 
+                        id="paymentNote" 
+                        name="note" 
+                        class="form-group__textarea"
+                        rows="3"
+                        placeholder="Optional note about this payment..."
+                    ></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn--secondary" id="cancelPaymentBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Add Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Transaction Confirmation Modal -->
+    <div id="deleteTransactionModal" class="modal">
+        <div class="modal__content">
+            <div class="modal__header">
+                <h2 class="modal__title">Delete Transaction</h2>
+                <button class="modal__close" id="closeDeleteTransactionModal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal__body">
+                <p>Are you sure you want to delete this transaction? This action cannot be undone.</p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn--secondary" id="cancelDeleteTransactionBtn">Cancel</button>
+                <button type="button" class="btn btn--danger" id="confirmDeleteTransactionBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=2"></script>
+</body>
+</html>

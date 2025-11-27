@@ -4,6 +4,12 @@
    Connected to Render Backend
    ==================================== */
 
+// Protection Check
+const role = localStorage.getItem("role");
+if (role !== "admin") {
+    window.location.href = "login.html";
+}
+
 // Backend API Base URL
 const BASE_URL = "https://dept-system.onrender.com"; // Correct Backend URL
 // const BASE_URL = "https://chocair-fresh-backend.onrender.com"; // New Render Service Name
@@ -1351,6 +1357,15 @@ function initializeEventListeners() {
             }
         });
     });
+
+    // Logout Button
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem("role");
+            window.location.href = "login.html";
+        });
+    }
 }
 
 // ====================================

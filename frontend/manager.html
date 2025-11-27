@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager View - Chocair Fresh</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Manager specific overrides */
+        .manager-header {
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .manager-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #111827;
+            margin: 0;
+        }
+        .logout-btn {
+            color: #dc2626;
+            background: none;
+            border: 1px solid #dc2626;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .manager-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .customer-list-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .customer-details h3 {
+            margin: 0 0 0.25rem 0;
+            font-size: 1.1rem;
+        }
+        .customer-details p {
+            margin: 0;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+        .customer-balance {
+            text-align: right;
+            margin-right: 1rem;
+        }
+        .balance-amount {
+            font-weight: 700;
+            font-size: 1.1rem;
+            display: block;
+        }
+        .view-btn {
+            background: #f3f4f6;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            color: #374151;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .view-btn:hover {
+            background: #e5e7eb;
+        }
+        /* Modal overrides for read-only */
+        .history-modal-content {
+            max-width: 600px;
+        }
+        .history-item {
+            padding: 1rem 0;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            justify-content: space-between;
+        }
+        .history-date { color: #9ca3af; font-size: 0.85rem; }
+        .history-type { font-weight: 600; font-size: 0.9rem; text-transform: uppercase; }
+        .history-amount { font-weight: 700; }
+        .type-debt { color: #dc2626; }
+        .type-payment { color: #16a34a; }
+    </style>
+</head>
+<body>
+    <header class="manager-header">
+        <h1 class="manager-title">Manager View</h1>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
+    </header>
+
+    <div class="manager-container">
+        <!-- Search -->
+        <div class="search" style="margin-bottom: 1.5rem;">
+            <input 
+                type="text" 
+                id="searchInput" 
+                class="search__input" 
+                placeholder="Search customers..."
+                autocomplete="off"
+            >
+        </div>
+
+        <!-- List -->
+        <div id="customerList">
+            <div class="loading">Loading customers...</div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="modal">
+        <div class="modal__content history-modal-content">
+            <div class="modal__header">
+                <h2 class="modal__title" id="modalCustomerName">History</h2>
+                <button class="modal__close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal__body">
+                <div id="historyList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="manager.js"></script>
+</body>
+</html>
