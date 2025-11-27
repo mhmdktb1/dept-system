@@ -28,7 +28,8 @@ router.get('/', async (req, res) => {
         let totalDebt = 0;
         let totalPaid = 0;
         transactions.forEach(t => {
-            const isDebt = ['debt', 'debit', 'DEBT'].includes(t.type) || (t.amount < 0 && t.type !== 'payment');
+            const type = (t.type || '').toLowerCase();
+            const isDebt = ['debt', 'debit'].includes(type) || (t.amount < 0 && type !== 'payment' && type !== 'credit');
             const amount = Math.abs(t.amount || 0);
             if (isDebt) totalDebt += amount;
             else totalPaid += amount;
@@ -77,9 +78,20 @@ router.get('/', async (req, res) => {
             if (y < margin + 120) {
                 page = pdfDoc.addPage();
                 y = height - margin;
+                
+                // Redraw header on new page
+                page.drawText('Date', { x: colX[0], y, size: 10, font: boldFont });
+                page.drawText('Type', { x: colX[1], y, size: 10, font: boldFont });
+                page.drawText('Amount', { x: colX[2], y, size: 10, font: boldFont });
+                page.drawText('Note', { x: colX[3], y, size: 10, font: boldFont });
+                page.drawText('Invoice', { x: colX[4], y, size: 10, font: boldFont });
+                y -= 5;
+                page.drawLine({ start: { x: margin, y }, end: { x: width - margin, y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
+                y -= 15;
             }
 
-            const isDebt = ['debt', 'debit', 'DEBT'].includes(t.type) || (t.amount < 0 && t.type !== 'payment');
+            const type = (t.type || '').toLowerCase();
+            const isDebt = ['debt', 'debit'].includes(type) || (t.amount < 0 && type !== 'payment' && type !== 'credit');
             const amount = Math.abs(t.amount || 0);
             const dateStr = new Date(t.date || t.createdAt).toISOString().split('T')[0];
             const typeStr = isDebt ? 'DEBT' : 'PAYMENT';
