@@ -2,7 +2,6 @@ import { getDb } from '../db.js';
 import { ObjectId } from 'mongodb';
 import express from 'express';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import fetch from 'node-fetch';
 
 const router = express.Router();
 
@@ -107,39 +106,51 @@ router.get('/', async (req, res) => {
             const truncatedNote = noteStr.length > 30 ? noteStr.substring(0, 27) + '...' : noteStr;
             page.drawText(truncatedNote, { x: colX[3], y, size: 10, font });
 
-            // Image handling
-            let rowHeight = 20;
-            if (t.invoiceImageUrl) {
-                try {
-                    const response = await fetch(t.invoiceImageUrl);
-                    if (!response.ok) throw new Error("Image fetch failed");
-                    const imgBuffer = await response.arrayBuffer();
+            // Image handling (Replaced with Link)
+            const invoiceUrl = t.invoiceImageUrl;
+            if (invoiceUrl) {
+                const linkText = "View Invoice";
 
-                    let image;
-                    try {
-                        image = await pdfDoc.embedJpg(imgBuffer);
-                    } catch (e) {
-                        image = await pdfDoc.embedPng(imgBuffer);
+                page.drawText(linkText, {
+                    x: colX[4],
+                    y,
+                    size: 10,
+                    font,
+                    color: rgb(0, 0, 1)      // blue text
+                });
+
+                // underline for link style
+                page.drawLine({
+                    start: { x: colX[4], y: y - 1 },
+                    end: { x: colX[4] + (linkText.length * 5), y: y - 1 },
+                    thickness: 0.5,
+                    color: rgb(0, 0, 1)
+                });
+
+                // actual clickable link annotation
+                page.node.setAnnotation({
+                    Type: 'Annot',
+                    Subtype: 'Link',
+                    Rect: [colX[4], y - 2, colX[4] + (linkText.length * 5), y + 10],
+                    Border: [0, 0, 0],
+                    A: {
+                        Type: 'Action',
+                        S: 'URI',
+                        URI: invoiceUrl
                     }
+                });
 
-                    // Scale to fit 80x80
-                    const dims = image.scaleToFit(80, 80);
-                    
-                    page.drawImage(image, {
-                        x: colX[4],
-                        y: y - dims.height + 8, 
-                        width: dims.width,
-                        height: dims.height,
-                    });
-                    rowHeight = Math.max(20, dims.height + 10);
-                } catch (e) {
-                    // console.error('Error embedding image:', e);
-                    page.drawText('N/A', { x: colX[4], y, size: 10, font, color: rgb(0.6, 0.6, 0.6) });
-                }
             } else {
-                page.drawText('N/A', { x: colX[4], y, size: 10, font, color: rgb(0.6, 0.6, 0.6) });
+                page.drawText("N/A", {
+                    x: colX[4],
+                    y,
+                    size: 10,
+                    font,
+                    color: rgb(0.6, 0.6, 0.6)
+                });
             }
 
+            const rowHeight = 20;
             y -= rowHeight;
             
             // Separator line
