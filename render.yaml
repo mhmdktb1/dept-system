@@ -3,10 +3,16 @@ services:
     name: dept-system-frontend
     rootDir: frontend
     buildCommand: ""
-    publishDir: "."
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+    autoDeploy: true
 
   - type: web
     name: dept-system-backend
     rootDir: backend
-    buildCommand: "npm install"
-    startCommand: "node server.js"
+    buildCommand: npm install
+    startCommand: node server.js
+    autoDeploy: true
